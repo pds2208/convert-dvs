@@ -26,8 +26,7 @@ const (
 	RightBrace = "}"
 	Stop       = "."
 	Not        = "^"
-
-	NotEqual = "^="
+	NotEqual   = "^="
 
 	// Keywords
 
@@ -39,18 +38,18 @@ const (
 	DoKeyword     = "DO"
 	EndKeyword    = "END"
 	StringKeyword = "STRING"
-	ReturnKeyword = "RETURN"
+	ArrayKeyword  = "ARRAY"
 )
 
 var keywords = map[string]TokenType{
-	"if":     IfKeyword,
-	"else":   ElseKeyword,
-	"in":     InKeyword,
-	"then":   ThenKeyword,
-	"and":    AndKeyword,
-	"do":     DoKeyword,
-	"end":    EndKeyword,
-	"return": ReturnKeyword,
+	"if":    IfKeyword,
+	"else":  ElseKeyword,
+	"in":    InKeyword,
+	"then":  ThenKeyword,
+	"and":   AndKeyword,
+	"do":    DoKeyword,
+	"end":   EndKeyword,
+	"array": ArrayKeyword,
 }
 
 func LookupIdent(ident string) TokenType {

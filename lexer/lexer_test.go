@@ -7,6 +7,10 @@ import (
 
 func TestNextToken(t *testing.T) {
 	input := `
+	
+    found = 0;
+	array uniq {31} uniqual01 - uniqual31;
+
  	if IOUTCOME ^=3 and thiswv=1  then do;
 		 if worse=1 and whpnumbr in ("1","2") then do;
 			  if eaffect in(1,4,-8) then WHPTYPEP="00";
@@ -22,6 +26,21 @@ func TestNextToken(t *testing.T) {
 		expectedType    token.TokenType
 		expectedLiteral string
 	}{
+		{token.Ident, "found"},
+		{token.Assign, "="},
+		{token.Integer, "0"},
+		{token.Semicolon, ";"},
+
+		{token.ArrayKeyword, "array"},
+		{token.Ident, "uniq"},
+		{token.LeftBrace, "{"},
+		{token.Integer, "31"},
+		{token.RightBrace, "}"},
+		{token.Ident, "uniqual01"},
+		{token.Minus, "-"},
+		{token.Ident, "uniqual31"},
+		{token.Semicolon, ";"},
+
 		{token.IfKeyword, "if"},
 		{token.Ident, "IOUTCOME"},
 		{token.NotEqual, "^="},
