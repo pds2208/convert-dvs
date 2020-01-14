@@ -2,59 +2,77 @@ package token
 
 type TokenType string
 
+const (
+	ILLEGAL = "ILLEGAL"
+	EOF     = "EOF"
+
+	// Identifiers + literals
+	IDENT  = "IDENT"  // add, foobar, x, y, ...
+	INT    = "INT"    // 1343456
+	FLOAT  = "FLOAT"  // 123.4567
+	STRING = "STRING" // "foobar"
+
+	// Operators
+	ASSIGN   = "="
+	PLUS     = "+"
+	MINUS    = "-"
+	BANG     = "!"
+	ASTERISK = "*"
+	SLASH    = "/"
+	LT       = "<"
+	GT       = ">"
+	EQ       = "="
+	NOT_EQ   = "^="
+
+	// Delimiters
+	COMMA     = ","
+	SEMICOLON = ";"
+
+	LPAREN   = "("
+	RPAREN   = ")"
+	LBRACE   = "{"
+	RBRACE   = "}"
+	LBRACKET = "["
+	RBRACKET = "]"
+	STOP     = "."
+
+	// Keywords
+
+	IF          = "IF"
+	ELSE        = "ELSE"
+	IN          = "IN"
+	THEN        = "THEN"
+	AND         = "AND"
+	DO          = "DO"
+	END         = "END"
+	ARRAY       = "ARRAY"
+	LET         = "LET"
+	FUNCTION    = "%MACRO"
+	ENDFUNCTION = "%MEND"
+)
+
 type Token struct {
 	Type    TokenType
 	Literal string
 }
 
-const (
-	Illegal = "ILLEGAL"
-	Eof     = "EOF"
-	// Identifiers + literals
-	Ident   = "IDENT" // add, foobar, x, y, ...
-	Integer = "INT"
-	// Operators
-	Assign = "="
-	Minus  = "-"
-	Plus   = "+"
-	// Delimiters
-	Comma      = ","
-	Semicolon  = ";"
-	LeftParen  = "("
-	RightParen = ")"
-	LeftBrace  = "{"
-	RightBrace = "}"
-	Stop       = "."
-	Not        = "^"
-	NotEqual   = "^="
-
-	// Keywords
-
-	IfKeyword     = "IF"
-	ElseKeyword   = "ELSE"
-	InKeyword     = "IN"
-	ThenKeyword   = "THEN"
-	AndKeyword    = "AND"
-	DoKeyword     = "DO"
-	EndKeyword    = "END"
-	StringKeyword = "STRING"
-	ArrayKeyword  = "ARRAY"
-)
-
 var keywords = map[string]TokenType{
-	"if":    IfKeyword,
-	"else":  ElseKeyword,
-	"in":    InKeyword,
-	"then":  ThenKeyword,
-	"and":   AndKeyword,
-	"do":    DoKeyword,
-	"end":   EndKeyword,
-	"array": ArrayKeyword,
+	"if":     IF,
+	"else":   ELSE,
+	"in":     IN,
+	"then":   THEN,
+	"and":    AND,
+	"do":     DO,
+	"end":    END,
+	"array":  ARRAY,
+	"let":    LET,
+	"%macro": FUNCTION,
+	"%mend":  ENDFUNCTION,
 }
 
 func LookupIdent(ident string) TokenType {
 	if tok, ok := keywords[ident]; ok {
 		return tok
 	}
-	return Ident
+	return IDENT
 }
