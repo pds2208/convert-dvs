@@ -1,77 +1,103 @@
 package token
 
-type TokenType string
+// Type is a string
+type Type string
 
-const (
-	ILLEGAL = "ILLEGAL"
-	EOF     = "EOF"
-
-	// Identifiers + literals
-	IDENT  = "IDENT"  // add, foobar, x, y, ...
-	INT    = "INT"    // 1343456
-	FLOAT  = "FLOAT"  // 123.4567
-	STRING = "STRING" // "foobar"
-
-	// Operators
-	ASSIGN   = "="
-	PLUS     = "+"
-	MINUS    = "-"
-	BANG     = "!"
-	ASTERISK = "*"
-	SLASH    = "/"
-	LT       = "<"
-	GT       = ">"
-	EQ       = "="
-	NOT_EQ   = "^="
-
-	// Delimiters
-	COMMA     = ","
-	SEMICOLON = ";"
-
-	LPAREN   = "("
-	RPAREN   = ")"
-	LBRACE   = "{"
-	RBRACE   = "}"
-	LBRACKET = "["
-	RBRACKET = "]"
-	STOP     = "."
-
-	// Keywords
-
-	IF          = "IF"
-	ELSE        = "ELSE"
-	IN          = "IN"
-	THEN        = "THEN"
-	AND         = "AND"
-	DO          = "DO"
-	END         = "END"
-	ARRAY       = "ARRAY"
-	LET         = "LET"
-	FUNCTION    = "%MACRO"
-	ENDFUNCTION = "%MEND"
-)
-
+// Token struct represent the lexer token
 type Token struct {
-	Type    TokenType
+	Type    Type
 	Literal string
 }
 
-var keywords = map[string]TokenType{
-	"if":     IF,
-	"else":   ELSE,
-	"in":     IN,
-	"then":   THEN,
-	"and":    AND,
-	"do":     DO,
-	"end":    END,
-	"array":  ARRAY,
-	"let":    LET,
-	"%macro": FUNCTION,
-	"%mend":  ENDFUNCTION,
+// pre-defined Type
+const (
+	EOF             = "EOF"
+	IDENT           = "IDENT"
+	INT             = "INT"
+	FLOAT           = "FLOAT"
+	ASSIGN          = "="
+	PLUS            = "+"
+	PLUS_PLUS       = "++"
+	PLUS_EQUALS     = "+="
+	AND             = "&&"
+	OR              = "||"
+	MOD             = "%"
+	COMMA           = ","
+	BACKTICK        = "`"
+	SEMICOLON       = ";"
+	MINUS           = "-"
+	MINUS_MINUS     = "--"
+	MINUS_EQUALS    = "-="
+	BANG            = "!"
+	ASTERISK        = "*"
+	ASTERISK_EQUALS = "*="
+	POW             = "**"
+	SLASH           = "/"
+	SLASH_EQUALS    = "/="
+	LT              = "<"
+	LT_EQUALS       = "<="
+	GT              = ">"
+	GT_EQUALS       = ">="
+	LPAREN          = "("
+	RPAREN          = ")"
+	LBRACE          = "{"
+	RBRACE          = "}"
+	FUNCTION        = "FUNCTION"
+	END_FUNCTION    = "END_FUNCTION"
+	DEFINE_FUNCTION = "DEFINE_FUNCTION"
+	IN              = "IN"
+	THEN            = "THEN"
+	DO              = "DO"
+	END             = "END"
+	ARRAY           = "ARRAY"
+	LET             = "LET"
+	CONST           = "CONST"
+	TRUE            = "TRUE"
+	FALSE           = "FALSE"
+	IF              = "IF"
+	ELSE            = "ELSE"
+	RETURN          = "RETURN"
+	FOR             = "FOR"
+	EQ              = "=="
+	NOT_EQ          = "!="
+	STRING          = "STRING"
+	REGEXP          = "REGEXP"
+	LBRACKET        = "["
+	RBRACKET        = "]"
+	COLON           = ":"
+	PERIOD          = "."
+	CONTAINS        = "~="
+	NOT_CONTAINS    = "!~"
+	QUESTION        = "?"
+	ILLEGAL         = "ILLEGAL"
+)
+
+// reversed keywords
+var keywords = map[string]Type{
+	"const":    CONST,
+	"else":     ELSE,
+	"false":    FALSE,
+	"fn":       FUNCTION,
+	"for":      FOR,
+	"function": DEFINE_FUNCTION,
+	"if":       IF,
+	"let":      LET,
+	"return":   RETURN,
+	"true":     TRUE,
+	"in":       IN,
+	"then":     THEN,
+	"and":      AND,
+	"or":       OR,
+	"do":       DO,
+	"end":      END,
+	"array":    ARRAY,
+	"%macro":   FUNCTION,
+	"%mend":    END_FUNCTION,
 }
 
-func LookupIdent(ident string) TokenType {
-	if tok, ok := keywords[ident]; ok {
+// LookupIdentifier used to determinate whether identifier is keyword nor not
+func LookupIdentifier(identifier string) Type {
+	if tok, ok := keywords[identifier]; ok {
 		return tok
 	}
 	return IDENT

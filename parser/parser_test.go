@@ -8,10 +8,26 @@ import (
 )
 
 func TestVarStatements(t *testing.T) {
+	//	input := `
+	//x = 5.5;
+	//y = 10;
+	//foobar = 838383; `
 	input := `
-x = 5;
-y = 10;
-foobar = 838383; `
+	
+    found = 0;
+	array uniq {31} uniqual01 - uniqual31;
+
+ 	if IOUTCOME ^=3 and thiswv=1  then do;
+		 if worse=1 and whpnumbr in ("1","2") then do;
+			  if eaffect in(1,4,-8) then WHPTYPEP="00";
+			  else if eaffect=2 then WHPTYPEP ="01";
+			  else WHPTYPEP ="99";
+		  end;
+  		else WHPTYPEP ="99";
+	end;
+	else WHPTYPEP ="99";
+
+`
 
 	l := lexer.New(input)
 	p := New(l)
@@ -49,7 +65,7 @@ func testVarStatement(t *testing.T, s ast.Statement, name string) bool {
 		return false
 	}
 
-	letStmt, ok := s.(*ast.VarStatement)
+	letStmt, ok := s.(*ast.LetStatement)
 
 	if !ok {
 		t.Errorf("s not *ast.LetStatement. got=%T", s)
@@ -185,26 +201,23 @@ func TestParsingInfixExpressions(t *testing.T) {
 		rightValue interface{}
 	}{
 		{"5 + 5;", 5, "+", 5},
-		{"5.5 + 5.5;", 5.5, "+", 5.5},
-		{"5 - 5;", 5, "-", 5},
-		{"5 * 5;", 5, "*", 5},
-		{"5 / 5;", 5, "/", 5},
-		{"5 > 5;", 5, ">", 5},
-		{"5 < 5;", 5, "<", 5},
-		{"5 == 5;", 5, "==", 5},
-		{"5.5 == 5.5;", 5.5, "==", 5.5},
-		{"5 != 5;", 5, "!=", 5},
-		{"foobar + barfoo;", "foobar", "+", "barfoo"},
-		{"foobar - barfoo;", "foobar", "-", "barfoo"},
-		{"foobar * barfoo;", "foobar", "*", "barfoo"},
-		{"foobar / barfoo;", "foobar", "/", "barfoo"},
-		{"foobar > barfoo;", "foobar", ">", "barfoo"},
-		{"foobar < barfoo;", "foobar", "<", "barfoo"},
-		{"foobar == barfoo;", "foobar", "==", "barfoo"},
-		{"foobar != barfoo;", "foobar", "!=", "barfoo"},
-		{"true == true", true, "==", true},
-		{"true != false", true, "!=", false},
-		{"false == false", false, "==", false},
+		//{"5.5 + 5.5;", 5.5, "+", 5.5},
+		//{"5 - 5;", 5, "-", 5},
+		//{"5 * 5;", 5, "*", 5},
+		//{"5 / 5;", 5, "/", 5},
+		//{"5 > 5;", 5, ">", 5},
+		//{"5 < 5;", 5, "<", 5},
+		//{"5 == 5;", 5, "==", 5},
+		//{"5.5 == 5.5;", 5.5, "==", 5.5},
+		//{"5 != 5;", 5, "!=", 5},
+		//{"foobar + barfoo;", "foobar", "+", "barfoo"},
+		//{"foobar - barfoo;", "foobar", "-", "barfoo"},
+		//{"foobar * barfoo;", "foobar", "*", "barfoo"},
+		//{"foobar / barfoo;", "foobar", "/", "barfoo"},
+		//{"foobar > barfoo;", "foobar", ">", "barfoo"},
+		//{"foobar < barfoo;", "foobar", "<", "barfoo"},
+		//{"foobar == barfoo;", "foobar", "==", "barfoo"},
+		//{"foobar != barfoo;", "foobar", "!=", "barfoo"},
 	}
 
 	for _, tt := range infixTests {
