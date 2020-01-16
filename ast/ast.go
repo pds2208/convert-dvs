@@ -511,6 +511,41 @@ func (fl *FunctionLiteral) String() string {
 
 }
 
+// InExpression holds a in expression
+//
+// See-also FunctionLiteral.
+type InExpression struct {
+	// Token holds the token
+	Token token.Token
+
+	Name *Identifier
+
+	// Parameters holds the function parameters.
+	Values []Expression
+}
+
+func (in *InExpression) expressionNode() {}
+
+// TokenLiteral returns the literal token.
+func (in *InExpression) TokenLiteral() string {
+	return in.Token.Literal
+}
+
+// String returns this object as a string.
+func (in *InExpression) String() string {
+	var out bytes.Buffer
+	params := make([]string, 0)
+	for _, p := range in.Values {
+		params = append(params, p.String())
+	}
+	out.WriteString(in.TokenLiteral())
+	out.WriteString("(")
+	out.WriteString(strings.Join(params, ", "))
+	out.WriteString(") ")
+	return out.String()
+
+}
+
 // FunctionDefineLiteral holds a function-definition.
 //
 // See-also FunctionLiteral.
@@ -518,7 +553,7 @@ type FunctionDefineLiteral struct {
 	// Token holds the token
 	Token token.Token
 
-	// Paremeters holds the function parameters.
+	// Parameters holds the function parameters.
 	Parameters []*Identifier
 
 	// Defaults holds any default-arguments.
@@ -648,7 +683,7 @@ func (rl *RegexpLiteral) TokenLiteral() string { return rl.Token.Literal }
 // String returns this object as a string.
 func (rl *RegexpLiteral) String() string {
 
-	return (fmt.Sprintf("/%s/%s", rl.Value, rl.Flags))
+	return fmt.Sprintf("/%s/%s", rl.Value, rl.Flags)
 }
 
 // BacktickLiteral holds details of a command to be executed

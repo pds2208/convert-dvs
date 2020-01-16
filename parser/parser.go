@@ -29,6 +29,7 @@ const (
 	EQUALS       // == or !=
 	REGEXP_MATCH // !~ ~=
 	LESSGREATER  // > or <
+	IN           // in(x,y,z)
 	SUM          // + or -
 	PRODUCT      // * or /
 	POWER        // **
@@ -48,6 +49,7 @@ var precedences = map[token.Type]int{
 	token.LT_EQUALS:    LESSGREATER,
 	token.GT:           LESSGREATER,
 	token.GT_EQUALS:    LESSGREATER,
+	token.IN:           IN,
 	token.CONTAINS:     REGEXP_MATCH,
 	token.NOT_CONTAINS: REGEXP_MATCH,
 
@@ -163,6 +165,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.QUESTION, p.parseTernaryExpression)
 	p.registerInfix(token.SLASH, p.parseInfixExpression)
 	p.registerInfix(token.SLASH_EQUALS, p.parseAssignExpression)
+	p.registerInfix(token.IN, p.parseInExpression)
 
 	// Register postfix functions.
 	p.postfixParseFns = make(map[token.Type]postfixParseFn)
@@ -364,12 +367,15 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 		return nil
 	}
 	leftExp := prefix()
+
 	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
+		// check for = and replace with ==
 		infix := p.infixParseFns[p.peekToken.Type]
 		if infix == nil {
 			return leftExp
 		}
 		p.nextToken()
+
 		leftExp = infix(leftExp)
 	}
 	return leftExp
@@ -513,22 +519,31 @@ func (p *Parser) parseIfExpression() ast.Expression {
 
 	expression.Condition = p.parseExpression(LOWEST)
 
-	if !p.expectPeek(token.THEN) {
+	if !p.curTokenIs(token.THEN) {
 		return nil
 	}
 
-	if !p.expectPeek(token.LBRACE) {
-		return nil
-	}
+	if p.expectPeek(token.DO) {
+		p.nextToken()
+		expression.Consequence = p.parseBlockStatement()
+		if !p.curTokenIs(token.END) {
+			return nil
+		}
+		p.nextToken() // eat ;
 
-	expression.Consequence = p.parseBlockStatement()
+	} else {
+		p.nextToken()
+		expression.Consequence = p.parseSingleBlockStatement()
+	}
 
 	if p.peekTokenIs(token.ELSE) {
 		p.nextToken()
-		if !p.expectPeek(token.LBRACE) {
-			return nil
+		if p.expectPeek(token.DO) {
+			p.nextToken()
+			expression.Alternative = p.parseBlockStatement()
+		} else {
+			expression.Alternative = p.parseSingleBlockStatement()
 		}
-		expression.Alternative = p.parseBlockStatement()
 	}
 	return expression
 }
@@ -556,12 +571,11 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 	block := &ast.BlockStatement{Token: p.curToken}
 	block.Statements = []ast.Statement{}
 	p.nextToken()
-	for !p.curTokenIs(token.RBRACE) {
+	for !p.curTokenIs(token.END) {
 
 		// Don't loop forever
 		if p.curTokenIs(token.EOF) {
-			p.errors = append(p.errors,
-				"unterminated block statement")
+			p.errors = append(p.errors, "unterminated block statement")
 			return nil
 		}
 
@@ -570,6 +584,16 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 			block.Statements = append(block.Statements, stmt)
 		}
 		p.nextToken()
+	}
+	return block
+}
+
+func (p *Parser) parseSingleBlockStatement() *ast.BlockStatement {
+	block := &ast.BlockStatement{Token: p.curToken}
+	block.Statements = []ast.Statement{}
+	stmt := p.parseStatement()
+	if stmt != nil {
+		block.Statements = append(block.Statements, stmt)
 	}
 	return block
 }
@@ -728,7 +752,76 @@ func (p *Parser) parseExpressionList(end token.Type) []ast.Expression {
 	return list
 }
 
-// parseInfixExpression parsea an array index expression.
+// parse in values elements literal
+func (p *Parser) parseInList(end token.Type) []ast.Expression {
+	var list []ast.Expression
+
+	if p.peekTokenIs(end) {
+		p.nextToken()
+		return list
+	}
+
+	p.nextToken()
+
+	for p.curToken.Type != end {
+
+		if p.curTokenIs(token.EOF) {
+			p.errors = append(p.errors, "unterminated in statement")
+			return nil
+		}
+
+		switch p.curToken.Type {
+		case token.INT:
+			list = append(list, p.parseIntegerLiteral())
+		case token.STRING:
+			list = append(list, p.parseStringLiteral())
+		case token.FLOAT:
+			list = append(list, p.parseFloatLiteral())
+		default:
+			return nil
+		}
+
+		p.nextToken()
+
+		if !p.curTokenIs(token.COMMA) && !p.curTokenIs(end) {
+			return nil
+		}
+
+		if p.curTokenIs(token.COMMA) {
+			p.nextToken()
+		}
+
+	}
+
+	if !p.curTokenIs(token.RPAREN) {
+		return nil
+	}
+	p.nextToken()
+
+	return list
+}
+
+// parseInfixExpression parses an in expression.
+func (p *Parser) parseInExpression(name ast.Expression) ast.Expression {
+	exp := &ast.InExpression{Token: p.curToken}
+
+	if n, ok := name.(*ast.Identifier); ok {
+		exp.Name = n
+	} else {
+		msg := fmt.Sprintf("expected in expresion to be IDENT, got %s instead around line %d", name.TokenLiteral(), p.l.GetLine())
+		p.errors = append(p.errors, msg)
+	}
+
+	if !p.expectPeek(token.LPAREN) {
+		return nil
+	}
+
+	exp.Values = p.parseInList(token.RPAREN)
+
+	return exp
+}
+
+// parseInfixExpression parses an array index expression.
 func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
 	exp := &ast.IndexExpression{Token: p.curToken, Left: left}
 	p.nextToken()

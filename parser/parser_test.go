@@ -13,7 +13,9 @@ func TestVarStatements(t *testing.T) {
 	//y = 10;
 	//foobar = 838383; `
 	input := `
-	
+	if worse=1 and whpnumbr in ("1","2") then do;
+       found = 1;
+    end;
     found = 0;
 	array uniq {31} uniqual01 - uniqual31;
 
