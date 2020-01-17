@@ -13,9 +13,8 @@ func TestVarStatements(t *testing.T) {
 	//y = 10;
 	//foobar = 838383; `
 	input := `
-	if worse=1 and whpnumbr in ("1","2") then do;
-       found = 1;
-    end;
+	if eaffect in(1,4,-8) then WHPTYPEP="00";
+    else if eaffect=2 then WHPTYPEP ="01";
     found = 0;
 	array uniq {31} uniqual01 - uniqual31;
 
@@ -40,24 +39,10 @@ func TestVarStatements(t *testing.T) {
 	if program == nil {
 		t.Fatalf("ParseProgram() returned nil")
 	}
-	if len(program.Statements) != 3 {
+	if len(program.Statements) != 4 {
 		t.Fatalf("program.Statements does not contain 3 statements. got=%d", len(program.Statements))
 	}
 
-	tests := []struct {
-		expectedIdentifier string
-	}{
-		{"x"},
-		{"y"},
-		{"foobar"},
-	}
-
-	for i, tt := range tests {
-		stmt := program.Statements[i]
-		if !testVarStatement(t, stmt, tt.expectedIdentifier) {
-			return
-		}
-	}
 }
 
 func testVarStatement(t *testing.T, s ast.Statement, name string) bool {

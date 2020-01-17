@@ -69,13 +69,13 @@ func (l *Lexer) NextToken() token.Token {
 	// skip single-line comments
 	if l.ch == rune('/') && l.peekChar() == rune('/') {
 		l.skipComment()
-		return (l.NextToken())
+		return l.NextToken()
 	}
 
 	// skip shebang
 	if l.ch == rune('#') && l.peekChar() == rune('!') && l.position == 0 {
 		l.skipComment()
-		return (l.NextToken())
+		return l.NextToken()
 	}
 
 	// multi-line comments

@@ -233,7 +233,6 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseArrayStatement()
 	case token.CONST:
 		return p.parseConstStatement()
-
 	default:
 		return p.parseExpressionStatement()
 	}
@@ -257,9 +256,7 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 
 	stmt.Value = p.parseExpression(LOWEST)
 
-	if p.peekTokenIs(token.SEMICOLON) {
-		p.nextToken()
-	}
+	p.nextToken() // ;
 
 	return stmt
 }
@@ -367,9 +364,16 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 		return nil
 	}
 	leftExp := prefix()
+	if p.curToken.Type == token.SEMICOLON {
+
+		return leftExp
+	}
 
 	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
 		// check for = and replace with ==
+		if p.peekToken.Type == token.ASSIGN {
+			p.peekToken = token.Token{Type: token.EQ, Literal: "=="}
+		}
 		infix := p.infixParseFns[p.peekToken.Type]
 		if infix == nil {
 			return leftExp
@@ -378,6 +382,7 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 
 		leftExp = infix(leftExp)
 	}
+
 	return leftExp
 }
 
@@ -518,13 +523,16 @@ func (p *Parser) parseIfExpression() ast.Expression {
 	p.nextToken()
 
 	expression.Condition = p.parseExpression(LOWEST)
-
-	if !p.curTokenIs(token.THEN) {
-		return nil
+	if !p.expectPeek(token.THEN) {
+		if !p.curTokenIs(token.THEN) {
+			return nil
+		}
 	}
 
-	if p.expectPeek(token.DO) {
+	if p.peekTokenIs(token.DO) {
+		p.nextToken() // eat DO
 		p.nextToken()
+		// check for then
 		expression.Consequence = p.parseBlockStatement()
 		if !p.curTokenIs(token.END) {
 			return nil
@@ -532,16 +540,20 @@ func (p *Parser) parseIfExpression() ast.Expression {
 		p.nextToken() // eat ;
 
 	} else {
+		if !p.curTokenIs(token.THEN) {
+			return nil
+		}
 		p.nextToken()
 		expression.Consequence = p.parseSingleBlockStatement()
 	}
 
 	if p.peekTokenIs(token.ELSE) {
 		p.nextToken()
-		if p.expectPeek(token.DO) {
+		if p.peekTokenIs(token.DO) {
 			p.nextToken()
 			expression.Alternative = p.parseBlockStatement()
 		} else {
+			p.nextToken()
 			expression.Alternative = p.parseSingleBlockStatement()
 		}
 	}
@@ -591,7 +603,11 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 func (p *Parser) parseSingleBlockStatement() *ast.BlockStatement {
 	block := &ast.BlockStatement{Token: p.curToken}
 	block.Statements = []ast.Statement{}
-	stmt := p.parseStatement()
+	// check for = and replace with ==
+	if p.peekToken.Type == token.ASSIGN {
+		p.peekToken = token.Token{Type: token.EQ, Literal: "=="}
+	}
+	stmt := p.parseExpressionStatement()
 	if stmt != nil {
 		block.Statements = append(block.Statements, stmt)
 	}
@@ -777,6 +793,12 @@ func (p *Parser) parseInList(end token.Type) []ast.Expression {
 			list = append(list, p.parseStringLiteral())
 		case token.FLOAT:
 			list = append(list, p.parseFloatLiteral())
+		case token.MINUS:
+			if !p.peekTokenIs(token.INT) && !p.peekTokenIs(token.FLOAT) {
+				return nil
+			}
+			p.nextToken()
+			continue
 		default:
 			return nil
 		}
@@ -796,7 +818,6 @@ func (p *Parser) parseInList(end token.Type) []ast.Expression {
 	if !p.curTokenIs(token.RPAREN) {
 		return nil
 	}
-	p.nextToken()
 
 	return list
 }
