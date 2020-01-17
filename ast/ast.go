@@ -703,6 +703,36 @@ func (bl *BacktickLiteral) TokenLiteral() string { return bl.Token.Literal }
 // String returns this object as a string.
 func (bl *BacktickLiteral) String() string { return bl.Token.Literal }
 
+// DoLiteral holds a do
+type DoLiteral struct {
+	// Token is the token
+	Token token.Token
+
+	Variable Expression
+	From     Expression
+	To       Expression
+
+	Statements Statement
+}
+
+func (al *DoLiteral) expressionNode() {}
+
+// TokenLiteral returns the literal token.
+func (al *DoLiteral) TokenLiteral() string { return al.Token.Literal }
+
+// String returns this object as a string.
+func (al *DoLiteral) String() string {
+	var out bytes.Buffer
+	out.WriteString("do ")
+	out.WriteString(al.Variable.String() + " = ")
+	out.WriteString(al.From.String())
+	out.WriteString("to ")
+	out.WriteString(al.To.String())
+	out.WriteString(al.Statements.String())
+	out.WriteString("end ")
+	return out.String()
+}
+
 // ArrayLiteral holds an inline array
 type ArrayLiteral struct {
 	// Token is the token

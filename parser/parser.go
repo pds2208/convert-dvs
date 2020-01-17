@@ -137,6 +137,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
 	p.registerPrefix(token.TRUE, p.parseBoolean)
 	p.registerPrefix(token.ARRAY, p.parseArrayLiteral)
+	p.registerPrefix(token.DO, p.parseDo)
 
 	// Register infix functions
 	p.infixParseFns = make(map[token.Type]infixParseFn)
@@ -766,6 +767,62 @@ func (p *Parser) parseExpressionList(end token.Type) []ast.Expression {
 	}
 
 	return list
+}
+
+// parseArrayLiteral parses an array literal.
+func (p *Parser) parseDo() ast.Expression {
+	do := &ast.DoLiteral{Token: p.curToken}
+	p.nextToken()
+
+	v := p.parseIdentifier()
+	if n, ok := v.(*ast.Identifier); ok {
+		do.Variable = n
+	} else {
+		msg := fmt.Sprintf("expected do expresion to be IDENT, got %s instead around line %d",
+			v.TokenLiteral(), p.l.GetLine())
+		p.errors = append(p.errors, msg)
+	}
+
+	if !p.expectPeek(token.ASSIGN) {
+		return nil
+	}
+
+	p.nextToken()
+
+	f := p.parseIntegerLiteral()
+	if n, ok := f.(*ast.IntegerLiteral); ok {
+		do.From = n
+	} else {
+		msg := fmt.Sprintf("expected in expresion to be IntegerLiteral, got %s instead around line %d",
+			f.TokenLiteral(), p.l.GetLine())
+		p.errors = append(p.errors, msg)
+	}
+
+	if !p.expectPeek(token.TO) {
+		return nil
+	}
+
+	p.nextToken()
+
+	t := p.parseIntegerLiteral()
+	if n, ok := t.(*ast.IntegerLiteral); ok {
+		do.To = n
+	} else {
+		msg := fmt.Sprintf("expected in expresion to be IntegerLiteral, got %s instead around line %d",
+			f.TokenLiteral(), p.l.GetLine())
+		p.errors = append(p.errors, msg)
+	}
+
+	p.nextToken()
+	p.nextToken()
+	do.Statements = p.parseStatement()
+	p.nextToken()
+	if !p.curTokenIs(token.END) {
+		return nil
+	}
+	p.nextToken() // eat ;
+
+	return do
 }
 
 // parse in values elements literal

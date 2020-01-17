@@ -8,10 +8,6 @@ import (
 )
 
 func TestVarStatements(t *testing.T) {
-	//	input := `
-	//x = 5.5;
-	//y = 10;
-	//foobar = 838383; `
 	input := `
 	if eaffect in(1,4,-8) then WHPTYPEP="00";
     else if eaffect=2 then WHPTYPEP ="01";
@@ -40,7 +36,55 @@ func TestVarStatements(t *testing.T) {
 		t.Fatalf("ParseProgram() returned nil")
 	}
 	if len(program.Statements) != 4 {
-		t.Fatalf("program.Statements does not contain 3 statements. got=%d", len(program.Statements))
+		t.Fatalf("program.Statements does not contain 4 statements. got=%d", len(program.Statements))
+	}
+
+}
+
+func TestArrayStatements(t *testing.T) {
+	input := `
+	array xrn {256} xrn1-xrn256;
+      array livwthn {16} livwth1-livwth16;
+      array marstan {16} marsta1-marsta16;
+      array marchkn {16} marchk1-marchk16;
+      array hohn {16} hoh1-hoh16;
+      array sexn {16} sex1-sex16;
+      array cry01n {16} cry1-cry16;
+      array cryo7n {16} cryoo1-cryoo16;
+      array ehatn {16} ehat1-ehat16;
+      array agen {16} age1-age16;
+      array hrpidn {16} hrpid1-hrpid16;
+      array persn {16} persno1-persno16;
+      array inecacn {16} inecac1-inecac16;
+      array caindn {16} caind1-caind16;
+      array ftptn {16} ftpt1-ftpt16;
+      array curedn {16} curedn1-curedn16;
+      array hohidn {16} hohid1-hohid16;
+      array famunitn {16} famunit1-famunit16;
+      array smsxfun {16} smsxfu1-smsxfu16;
+      array extend {16} ext1-ext16;
+      array fdpch19n {16} fdpch19n1-fdpch19n16;
+      array relhfun {16} relhfu1-relhfu16;
+      array extfun {16} extfu1-extfu16;
+      array futypen {16} futypen1-futypen16;
+      array recnon {16} recno1-recno16;
+
+HNPEN=0;
+do i = 1 to 16;
+   if (agen{i}>=65 and sexn{i}=1) or (agen{i}>=60 and sexn{i}=2) then HNPEN=HNPEN+1;
+end;
+`
+	l := lexer.New(input)
+	p := New(l)
+
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if program == nil {
+		t.Fatalf("ParseProgram() returned nil")
+	}
+	if len(program.Statements) != 27 {
+		t.Fatalf("program.Statements does not contain 27 statements. got=%d", len(program.Statements))
 	}
 
 }

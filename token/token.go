@@ -58,12 +58,13 @@ const (
 	ELSE            = "ELSE"
 	RETURN          = "RETURN"
 	FOR             = "FOR"
+	TO              = "TO"
 	EQ              = "=="
 	NOT_EQ          = "^="
 	STRING          = "STRING"
 	REGEXP          = "REGEXP"
-	LBRACKET        = "["
-	RBRACKET        = "]"
+	LBRACKET        = "{"
+	RBRACKET        = "}"
 	COLON           = ":"
 	PERIOD          = "."
 	CONTAINS        = "~="
@@ -89,6 +90,7 @@ var keywords = map[string]Type{
 	"and":      AND,
 	"or":       OR,
 	"do":       DO,
+	"to":       TO,
 	"end":      END,
 	"array":    ARRAY,
 	"%macro":   FUNCTION,
