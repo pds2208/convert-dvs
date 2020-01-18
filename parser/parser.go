@@ -794,7 +794,7 @@ func (p *Parser) parseDo() ast.Expression {
 		do.From = n
 	} else {
 		msg := fmt.Sprintf("expected in expresion to be IntegerLiteral, got %s instead around line %d",
-			f.TokenLiteral(), p.l.GetLine())
+			f.String(), p.l.GetLine())
 		p.errors = append(p.errors, msg)
 	}
 
