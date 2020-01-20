@@ -95,7 +95,7 @@ type ArrayStatement struct {
 	Name *Identifier
 
 	// Value is the thing we're storing in the variable.
-	Value Expression
+	Value []Expression
 }
 
 func (ls *ArrayStatement) statementNode() {}
@@ -110,7 +110,12 @@ func (ls *ArrayStatement) String() string {
 	out.WriteString(ls.Name.TokenLiteral())
 	out.WriteString(" = ")
 	if ls.Value != nil {
-		out.WriteString(ls.Value.String())
+		for k, v := range ls.Value {
+			out.WriteString(v.String())
+			if k != len(ls.Value) {
+				out.WriteString(", ")
+			}
+		}
 	}
 	out.WriteString(";")
 	return out.String()
@@ -760,6 +765,29 @@ func (al *ArrayLiteral) String() string {
 	return out.String()
 }
 
+// LengthLiteral holds a LENGTH statement
+type LengthLiteral struct {
+	// Token is the token
+	Token token.Token
+
+	Name  Expression
+	Value Expression
+}
+
+func (al *LengthLiteral) expressionNode() {}
+
+// TokenLiteral returns the literal token.
+func (al *LengthLiteral) TokenLiteral() string { return al.Token.Literal }
+
+// String returns this object as a string.
+func (al *LengthLiteral) String() string {
+	var out bytes.Buffer
+	out.WriteString("[")
+	out.WriteString(al.Name.String() + " = " + al.Value.String())
+	out.WriteString("]")
+	return out.String()
+}
+
 // IndexExpression holds an index-expression
 type IndexExpression struct {
 	// Token is the actual token
@@ -769,7 +797,7 @@ type IndexExpression struct {
 	Left Expression
 
 	// Index is the value we're indexing
-	Index Expression
+	Index []Expression
 }
 
 func (ie *IndexExpression) expressionNode() {}
@@ -782,9 +810,13 @@ func (ie *IndexExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString("(")
 	out.WriteString(ie.Left.String())
-	out.WriteString("[")
-	out.WriteString(ie.Index.String())
-	out.WriteString("])")
+	out.WriteString("{")
+	elements := make([]string, 0)
+	for _, el := range ie.Index {
+		elements = append(elements, el.String())
+	}
+	out.WriteString(strings.Join(elements, ", "))
+	out.WriteString("]})")
 	return out.String()
 }
 

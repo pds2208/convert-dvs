@@ -70,7 +70,10 @@ array futypen {16} futypen1-futypen16;
 array recnon {16} recno1-recno16;
 array xrel2 {16,16} xrn1-xrn256;
 
+length ADDLEVEL $2;
+
 do i = 1 to 16;
+    smsxfun{i} = famunitn{i};
     smsxfun{i} = famunitn{i};
 end;
 
@@ -140,8 +143,8 @@ SMSXFU = smsxfun{recno};
 	if program == nil {
 		t.Fatalf("ParseProgram() returned nil")
 	}
-	if len(program.Statements) != 27 {
-		t.Fatalf("program.Statements does not contain 27 statements. got=%d", len(program.Statements))
+	if len(program.Statements) != 30 {
+		t.Fatalf("program.Statements does not contain 30 statements. got=%d", len(program.Statements))
 	}
 
 }
@@ -799,26 +802,22 @@ func TestParsingArrayLiterals(t *testing.T) {
 }
 
 func TestParsingIndexExpressions(t *testing.T) {
-	input := "myArray[1 + 1]"
+	input := "array hrpidn {16,16} hrpid1-hrpid16;"
 
 	l := lexer.New(input)
 	p := New(l)
 	program := p.ParseProgram()
 	checkParserErrors(t, p)
 
-	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	indexExp, ok := stmt.Expression.(*ast.IndexExpression)
+	stmt, ok := program.Statements[0].(*ast.ArrayStatement)
 	if !ok {
-		t.Fatalf("exp not *ast.IndexExpression. got=%T", stmt.Expression)
+		t.Fatalf("exp not *ast.ArrayStatement got=%T", program.Statements[0])
 	}
 
-	if !testIdentifier(t, indexExp.Left, "myArray") {
+	if !testIdentifier(t, stmt.Name, "hrpidn") {
 		return
 	}
 
-	if !testInfixExpression(t, indexExp.Index, 1, "+", 1) {
-		return
-	}
 }
 
 func TestParsingEmptyHashLiteral(t *testing.T) {

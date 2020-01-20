@@ -42,7 +42,7 @@ func ParseExcel(fileName string) {
 				}
 			}
 
-			fileName := "output/" + sheet + "/" + strings.ToLower(st) + ".R"
+			fileName := "output/" + sheet + "/" + strings.ToLower(st) + ".sas"
 			dv := j.Data.Rows[i].RowData[1]
 			if dv == "" {
 				continue

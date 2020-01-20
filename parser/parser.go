@@ -138,6 +138,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.TRUE, p.parseBoolean)
 	p.registerPrefix(token.ARRAY, p.parseArrayLiteral)
 	p.registerPrefix(token.DO, p.parseDo)
+	p.registerPrefix(token.LENGTH, p.parseLengthLiteral)
 
 	// Register infix functions
 	p.infixParseFns = make(map[token.Type]infixParseFn)
@@ -249,6 +250,12 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 
 	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 
+	if p.peekTokenIs(token.LBRACE) { // index
+		stmt.Value = p.parseExpression(LOWEST)
+		p.nextToken()
+		return stmt
+	}
+
 	if !p.expectPeek(token.ASSIGN) {
 		return nil
 	}
@@ -257,7 +264,7 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 
 	stmt.Value = p.parseExpression(LOWEST)
 
-	p.nextToken() // ;
+	p.nextToken()
 
 	return stmt
 }
@@ -277,7 +284,16 @@ func (p *Parser) parseArrayStatement() *ast.ArrayStatement {
 		return nil
 	}
 	p.nextToken() // eat the {
-	stmt.Value = p.parseIntegerLiteral()
+	stmt.Value = append(stmt.Value, p.parseIntegerLiteral())
+
+	for p.peekTokenIs(token.COMMA) { // multi dimensional array
+		if p.peekTokenIs(token.COMMA) {
+			p.nextToken()
+			p.nextToken()
+			stmt.Value = append(stmt.Value, p.parseIntegerLiteral())
+		}
+	}
+
 	if !p.expectPeek(token.RBRACE) {
 		return nil
 	}
@@ -365,6 +381,9 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 		return nil
 	}
 	leftExp := prefix()
+	if leftExp == nil {
+		return nil
+	}
 	if p.curToken.Type == token.SEMICOLON {
 
 		return leftExp
@@ -727,6 +746,20 @@ func (p *Parser) parseBacktickLiteral() ast.Expression {
 	return &ast.BacktickLiteral{Token: p.curToken, Value: p.curToken.Literal}
 }
 
+func (p *Parser) parseLengthLiteral() ast.Expression {
+	length := &ast.LengthLiteral{Token: p.curToken}
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+	length.Name = p.parseIdentifier()
+	if !p.expectPeek(token.DOLLAR) {
+		return nil
+	}
+	p.nextToken()
+	length.Value = p.parseIntegerLiteral()
+	return length
+}
+
 // parseArrayLiteral parses an array literal.
 func (p *Parser) parseArrayLiteral() ast.Expression {
 	array := &ast.ArrayLiteral{Token: p.curToken}
@@ -734,7 +767,7 @@ func (p *Parser) parseArrayLiteral() ast.Expression {
 	return array
 }
 
-// parsearray elements literal
+// parse array elements literal
 func (p *Parser) parseExpressionList(end token.Type) []ast.Expression {
 	var list []ast.Expression
 
@@ -789,13 +822,20 @@ func (p *Parser) parseDo() ast.Expression {
 
 	p.nextToken()
 
-	f := p.parseIntegerLiteral()
-	if n, ok := f.(*ast.IntegerLiteral); ok {
-		do.From = n
+	if p.curTokenIs(token.IDENT) {
+		do.From = p.parseIdentifier()
 	} else {
-		msg := fmt.Sprintf("expected in expresion to be IntegerLiteral, got %s instead around line %d",
-			f.String(), p.l.GetLine())
-		p.errors = append(p.errors, msg)
+		f := p.parseIntegerLiteral()
+		if f == nil {
+			return nil
+		}
+		if n, ok := f.(*ast.IntegerLiteral); ok {
+			do.From = n
+		} else {
+			msg := fmt.Sprintf("expected in expresion to be IntegerLiteral, got %s instead around line %d",
+				f.String(), p.l.GetLine())
+			p.errors = append(p.errors, msg)
+		}
 	}
 
 	if !p.expectPeek(token.TO) {
@@ -804,18 +844,22 @@ func (p *Parser) parseDo() ast.Expression {
 
 	p.nextToken()
 
-	t := p.parseIntegerLiteral()
-	if n, ok := t.(*ast.IntegerLiteral); ok {
-		do.To = n
+	if p.curTokenIs(token.IDENT) {
+		do.To = p.parseIdentifier()
 	} else {
-		msg := fmt.Sprintf("expected in expresion to be IntegerLiteral, got %s instead around line %d",
-			f.TokenLiteral(), p.l.GetLine())
-		p.errors = append(p.errors, msg)
+		t := p.parseIntegerLiteral()
+		if n, ok := t.(*ast.IntegerLiteral); ok {
+			do.To = n
+		} else {
+			msg := fmt.Sprintf("expected in expresion to be IntegerLiteral, got %s instead around line %d",
+				t.TokenLiteral(), p.l.GetLine())
+			p.errors = append(p.errors, msg)
+		}
 	}
 
 	p.nextToken()
-	p.nextToken()
-	do.Statements = p.parseStatement()
+	//p.nextToken()
+	do.Statements = p.parseBlockStatement()
 	p.nextToken()
 	if !p.curTokenIs(token.END) {
 		return nil
@@ -883,11 +927,19 @@ func (p *Parser) parseInList(end token.Type) []ast.Expression {
 func (p *Parser) parseInExpression(name ast.Expression) ast.Expression {
 	exp := &ast.InExpression{Token: p.curToken}
 
-	if n, ok := name.(*ast.Identifier); ok {
-		exp.Name = n
-	} else {
-		msg := fmt.Sprintf("expected in expresion to be IDENT, got %s instead around line %d", name.TokenLiteral(), p.l.GetLine())
+	switch name.(type) {
+	case *ast.Identifier:
+		exp.Name = name.(*ast.Identifier)
+
+	case *ast.IndexExpression:
+		n := name.(*ast.IndexExpression)
+		exp.Name = n.Left.(*ast.Identifier)
+
+	default:
+		msg := fmt.Sprintf("expected in expresion to be IDENT, got %s instead around line %d",
+			name.TokenLiteral(), p.l.GetLine())
 		p.errors = append(p.errors, msg)
+
 	}
 
 	if !p.expectPeek(token.LPAREN) {
@@ -903,7 +955,14 @@ func (p *Parser) parseInExpression(name ast.Expression) ast.Expression {
 func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
 	exp := &ast.IndexExpression{Token: p.curToken, Left: left}
 	p.nextToken()
-	exp.Index = p.parseExpression(LOWEST)
+	exp.Index = append(exp.Index, p.parseExpression(LOWEST))
+	for p.peekTokenIs(token.COMMA) { // multi dimensional array
+		if p.peekTokenIs(token.COMMA) {
+			p.nextToken()
+			p.nextToken()
+			exp.Index = append(exp.Index, p.parseExpression(LOWEST))
+		}
+	}
 	if !p.expectPeek(token.RBRACKET) {
 		return nil
 	}

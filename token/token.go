@@ -42,6 +42,7 @@ const (
 	RPAREN          = ")"
 	LBRACE          = "{"
 	RBRACE          = "}"
+	DOLLAR          = "$"
 	FUNCTION        = "FUNCTION"
 	END_FUNCTION    = "END_FUNCTION"
 	DEFINE_FUNCTION = "DEFINE_FUNCTION"
@@ -71,6 +72,7 @@ const (
 	NOT_CONTAINS    = "!~"
 	QUESTION        = "?"
 	ILLEGAL         = "ILLEGAL"
+	LENGTH          = "LENGTH"
 )
 
 // reversed keywords
@@ -95,6 +97,7 @@ var keywords = map[string]Type{
 	"array":    ARRAY,
 	"%macro":   FUNCTION,
 	"%mend":    END_FUNCTION,
+	"length":   LENGTH,
 }
 
 // LookupIdentifier used to determinate whether identifier is keyword nor not
