@@ -860,7 +860,7 @@ func (p *Parser) parseDo() ast.Expression {
 	p.nextToken()
 	//p.nextToken()
 	do.Statements = p.parseBlockStatement()
-	p.nextToken()
+	//p.nextToken()
 	if !p.curTokenIs(token.END) {
 		return nil
 	}
