@@ -108,12 +108,12 @@ SMSXFU = smsxfun{recno};
 	if program == nil {
 		t.Fatalf("ParseProgram() returned nil")
 	}
-	f := GeneratePreamble(program, "dv_name")
-	print(f)
+	g := NewGenerator(program, "dv_name")
 
-	s := Eval(program)
+	//print(g.GeneratePreamble().PythonRepresentation())
+
+	s := g.Generate().TargetCodeRepresentation()
 	print(s)
-
 }
 
 func checkParserErrors(t *testing.T, p *parser.Parser) {
