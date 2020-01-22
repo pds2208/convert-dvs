@@ -18,6 +18,7 @@ type Generator struct {
 	buffer      *bytes.Buffer
 	programName string
 	object      object.Object
+	indent      int
 }
 
 func NewGenerator(program *ast.Program, programName string) Generator {
@@ -29,7 +30,7 @@ func (g Generator) TargetCodeRepresentation() string {
 }
 
 func (g Generator) Generate() Generator {
-	g.object = g.eval(g.program, object.NewEnvironment())
+	g.eval(g.program)
 	return g
 }
 
@@ -60,219 +61,148 @@ func (g Generator) GeneratePreamble() Generator {
 	return g
 }
 
-func (g Generator) eval(node ast.Node, env *object.Environment) object.Object {
+func (g Generator) eval(node ast.Node) {
 
 	switch node := node.(type) {
 
 	case *ast.Program:
-		return g.evalProgram(node, env)
+		g.evalProgram(node)
 
 	case *ast.BlockStatement:
-		return g.evalBlockStatement(node, env)
+		g.evalBlockStatement(node)
 
 	case *ast.IfExpression:
-		return g.evalIfExpression(node, env)
+		g.evalIfExpression(node)
 
 	case *ast.ExpressionStatement:
-		return g.eval(node.Expression, env)
+		g.buffer.WriteString(g.indentString())
+		g.eval(node.Expression)
+		g.buffer.WriteString("\n")
 
 	case *ast.LetStatement:
-		val := g.eval(node.Value, env)
-		if isError(val) {
-			return val
-		}
-		env.Set(node.Name.Value, val)
-		return val
+		//g.buffer.WriteString(node.Name.Value)
+		g.buffer.WriteString(g.indentString())
+		g.eval(node.Value)
+
+	case *ast.InExpression:
+		g.buffer.WriteString(node.Name.Value)
 
 	case *ast.IndexExpression:
-		left := g.eval(node.Left, env)
-		if isError(left) {
-			return left
+		//g.buffer.WriteString(" ")
+		g.eval(node.Left)
+		g.buffer.WriteString("[")
+
+		for _, v := range node.Index {
+			g.eval(v)
 		}
-		index := g.eval(node.Index, env)
-		if isError(index) {
-			return index
-		}
-		return g.evalIndexExpression(left, index)
+		//for _, v := range node.Index {
+		//	g.buffer.WriteString(v.String())
+		//}
+		g.buffer.WriteString("]")
 
 		// ignore these
 	case *ast.LengthLiteral:
 
 	case *ast.ArrayStatement:
-		return &object.Array{Name: node.Name.Value} // we don't need the array size in python
+		g.buffer.WriteString(node.Name.Value + " = []\n")
 
 	case *ast.IntegerLiteral:
-		return &object.Integer{Value: node.Value}
+		g.buffer.WriteString(fmt.Sprintf("%d", node.Value))
 
 	case *ast.Boolean:
-		return &object.Boolean{Value: node.Value}
+		g.buffer.WriteString(fmt.Sprintf("%t", node.Value))
 
 	case *ast.PrefixExpression:
-		right := g.eval(node.Right, env)
-		if isError(right) {
-			return right
-		}
-		return g.evalPrefixExpression(node.Operator, right)
+		g.buffer.WriteString(g.indentString())
+		g.buffer.WriteString(fmt.Sprintf("%s", node.Operator))
+		g.eval(node.Right)
 
 	case *ast.Identifier:
-		return g.evalIdentifier(node, env)
+		g.buffer.WriteString(fmt.Sprintf("%s", node.Value))
 
 	case *ast.DoLiteral:
+		g.indentString()
+		g.buffer.WriteString(fmt.Sprintf("for %s in range(%s, %s):\n",
+			node.Variable.String(), node.From.String(), node.To.String()))
+		g.indent++
+		g.eval(node.Statements)
 
+	case *ast.InfixExpression:
+		g.indentString()
+		g.buffer.WriteString("(")
+		g.eval(node.Left)
+		if node.Operator == "==" {
+			node.Operator = "="
+		}
+		g.buffer.WriteString(fmt.Sprintf(" %s ", node.Operator))
+		g.eval(node.Right)
+		g.buffer.WriteString(")")
 	}
-
-	return nil
 }
 
-func (g Generator) evalProgram(program *ast.Program, env *object.Environment) object.Object {
-	var result object.Object
+func (g Generator) evalProgram(program *ast.Program) {
 	for _, statement := range program.Statements {
-		result = g.eval(statement, env)
-
-		switch result := result.(type) {
-		//case *object.ReturnValue:
-		//	return result.Value
-		case *object.Error:
-			return result
-		}
-
-		if result == nil {
-			println(statement.TokenLiteral())
-		}
-		if result != nil {
-			a := result.Inspect()
-			print(a)
-		}
-	}
-	return result
-}
-
-func (g Generator) evalIndexExpression(left, index object.Object) object.Object {
-	switch {
-	case left.Type() == object.ArrayObj && index.Type() == object.IntegerObj:
-		return g.evalArrayIndexExpression(left, index)
-	case left.Type() == object.ArrayObj
-		return g.evalArrayIdentIndexExpression(left, index)
-	default:
-		return newError("index operator not supported: %s", left.Type())
-	}
-}
-
-func (g Generator) evalArrayIndexExpression(array, index object.Object) object.Object {
-	arrayObject := array.(*object.Array)
-	idx := index.(*object.Integer).Value
-	max := int64(len(arrayObject.Elements) - 1)
-
-	if idx < 0 || idx > max {
-		return NULL
+		g.eval(statement)
 	}
 
-	return arrayObject.Elements[idx]
 }
 
-func (g Generator) evalArrayIdentIndexExpression(array, index object.Object) object.Object {
-	arrayObject := array.(*object.Array)
-	idx := index.(*object.Integer).Value
-	max := int64(len(arrayObject.Elements) - 1)
+//
+//func (g Generator) evaluateIndex(node ast.Node) string {
+//	v := node.Value.(*ast.InfixExpression)
+//
+//	switch v.Right.(type) {
+//	case *ast.IndexExpression:
+//		leftIndex := v.Left.(*ast.IndexExpression)
+//		rightIndex := v.Right.(*ast.IndexExpression)
+//		g.buffer.WriteString(fmt.Sprintf("%s %s [%s]", leftIndex.Left.String(), v.Operator, rightIndex.))
+//	default:
+//		g.buffer.WriteString(fmt.Sprintf("%s = %s", leftIndex.Left.String(), v.Operator, rightIndex.))
+//	}
+//
+//	b := bytes.Buffer{}
+//	rightIndex := v.Left.(*ast.IndexExpression)
+//
+//	for i, j := range rightIndex.Index {
+//		b.WriteString(j.String())
+//		if i < len(rightIndex.Index) -1 {
+//			b.WriteString(", ")
+//		}
+//	}
+//
+//	g.buffer.WriteString(fmt.Sprintf("%s %s [%s]", leftIndex.Left.String(), v.Operator, rightIndex.))
+//	g.eval(node.Value)
+//
+//}
 
-	if idx < 0 || idx > max {
-		return NULL
-	}
-
-	return arrayObject.Elements[idx]
-}
-
-func (g Generator) evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
-	val, ok := env.Get(node.Value)
-	if !ok {
-		return newError("identifier not found: " + node.Value)
-	}
-	return val
-}
-
-func (g Generator) evalBlockStatement(block *ast.BlockStatement, env *object.Environment) object.Object {
-	var result object.Object
+func (g Generator) evalBlockStatement(block *ast.BlockStatement) {
 	for _, statement := range block.Statements {
-		result = g.eval(statement, env)
-		if result != nil {
-			rt := result.Type()
-			if rt == object.ErrorObj {
-				return result
-			}
-		}
-	}
-	return result
-}
-
-func (g Generator) evalPrefixExpression(operator string, right object.Object) object.Object {
-	switch operator {
-	case "-":
-		return g.evalMinusPrefixOperatorExpression(right)
-	default:
-		return newError("unknown operator: %s%s", operator, right.Type())
+		g.eval(statement)
+		g.buffer.WriteString("\n")
 	}
 }
 
-func (g Generator) evalMinusPrefixOperatorExpression(right object.Object) object.Object {
-	switch right.Type() {
-
-	case object.IntegerObj:
-		value := right.(*object.Integer).Value
-		return &object.Integer{Value: -value}
-
-	case object.FloatObj:
-		value := right.(*object.Float).Value
-		return &object.Float{Value: -value}
-	}
-
-	return NULL
-}
-
-func (g Generator) evalStatements(stmts []ast.Statement, env *object.Environment) object.Object {
-	var result object.Object
+func (g Generator) evalStatements(stmts []ast.Statement) {
 
 	for _, statement := range stmts {
-		result = g.eval(statement, env)
+		g.eval(statement)
+		g.buffer.WriteString("\n")
 	}
 
-	return result
 }
 
-func (g Generator) evalIfExpression(ie *ast.IfExpression, env *object.Environment) object.Object {
-	condition := g.eval(ie.Condition, env)
-	if isError(condition) {
-		return condition
-	}
-
-	if isTruthy(condition) {
-		return g.eval(ie.Consequence, env)
-	} else if ie.Alternative != nil {
-		return g.eval(ie.Alternative, env)
-	} else {
-		return NULL
-	}
+func (g Generator) evalIfExpression(ie *ast.IfExpression) {
+	g.indentString()
+	g.buffer.WriteString("if ")
+	g.eval(ie.Condition)
+	g.buffer.WriteString(":")
+	g.indent++
 }
 
-func newError(format string, a ...interface{}) *object.Error {
-	return &object.Error{Message: fmt.Sprintf(format, a...)}
-}
-
-func isError(obj object.Object) bool {
-	if obj != nil {
-		return obj.Type() == object.ErrorObj
+func (g Generator) indentString() string {
+	b := &bytes.Buffer{}
+	for i := 0; i < g.indent; i++ {
+		b.WriteString("    ")
 	}
-	return false
-}
-
-func isTruthy(obj object.Object) bool {
-	switch obj {
-	case NULL:
-		return false
-	case TRUE:
-		return true
-	case FALSE:
-		return false
-	default:
-		return true
-	}
+	return b.String()
 }

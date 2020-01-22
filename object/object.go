@@ -13,6 +13,7 @@ const (
 	FloatObj   = "FLOAT"
 	NullObj    = "NULL"
 	ArrayObj   = "ARRAY"
+	IndexObj   = "INDEX"
 	BooleanObj = "BOOLEAN"
 	ErrorObj   = "ERROR"
 )

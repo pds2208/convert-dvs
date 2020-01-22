@@ -7,6 +7,6 @@ type Array struct {
 	Elements []Object
 }
 
-func (i *Array) Inspect() string { return fmt.Sprintf("%s = []", i.Name) }
+func (i *Array) Inspect() string { return fmt.Sprintf("%s", i.Name) }
 
 func (i *Array) Type() Type { return ArrayObj }

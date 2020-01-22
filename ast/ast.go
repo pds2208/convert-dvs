@@ -8,7 +8,7 @@ import (
 	"convert/token"
 )
 
-// Node reresents a node.
+// Node represents a node.
 type Node interface {
 	// TokenLiteral returns the literal of the token.
 	TokenLiteral() string
@@ -54,6 +54,22 @@ func (p *Program) String() string {
 		out.WriteString(stmt.String())
 	}
 	return out.String()
+}
+
+// LetStatement holds a let-statement
+type Eol struct {
+	// Token holds the token
+	Token token.Token
+}
+
+func (ls *Eol) statementNode() {}
+
+// TokenLiteral returns the literal token.
+func (ls *Eol) TokenLiteral() string { return ls.Token.Literal }
+
+// String returns this object as a string.
+func (ls *Eol) String() string {
+	return "EOL"
 }
 
 // LetStatement holds a let-statement

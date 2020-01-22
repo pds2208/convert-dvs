@@ -139,6 +139,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.ARRAY, p.parseArrayLiteral)
 	p.registerPrefix(token.DO, p.parseDo)
 	p.registerPrefix(token.LENGTH, p.parseLengthLiteral)
+	p.registerPrefix(token.EOL, p.parseLengthLiteral)
 
 	// Register infix functions
 	p.infixParseFns = make(map[token.Type]infixParseFn)
@@ -982,17 +983,6 @@ func (p *Parser) parseAssignExpression(name ast.Expression) ast.Expression {
 	oper := p.curToken
 	p.nextToken()
 
-	//
-	// An assignment is generally:
-	//
-	//    variable = value
-	//
-	// But we cheat and reuse the implementation for:
-	//
-	//    i += 4
-	//
-	// In this case we record the "operator" as "+="
-	//
 	switch oper.Type {
 	case token.PLUS_EQUALS:
 		stmt.Operator = "+="
