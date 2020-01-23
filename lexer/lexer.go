@@ -99,13 +99,6 @@ func (l *Lexer) NextToken() token.Token {
 
 	case '=':
 		tok = newToken(token.ASSIGN, l.ch)
-		if l.peekChar() == rune('=') {
-			ch := l.ch
-			l.readChar()
-			tok = token.Token{Type: token.EQ, Literal: string(ch) + string(l.ch)}
-		} else {
-			tok = newToken(token.ASSIGN, l.ch)
-		}
 	case ';':
 		tok = newToken(token.SEMICOLON, l.ch)
 	case '?':

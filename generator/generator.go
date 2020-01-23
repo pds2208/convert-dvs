@@ -3,22 +3,17 @@ package generator
 import (
 	"bytes"
 	"convert/ast"
-	"convert/object"
 	"fmt"
-)
-
-var (
-	NULL  = &object.Null{}
-	TRUE  = &object.Boolean{Value: true}
-	FALSE = &object.Boolean{Value: false}
+	"regexp"
 )
 
 type Generator struct {
-	program     *ast.Program
-	buffer      *bytes.Buffer
-	programName string
-	object      object.Object
-	indent      int
+	program       *ast.Program
+	buffer        *bytes.Buffer
+	programName   string
+	indent        int
+	inLet         bool
+	inIfCondition bool
 }
 
 func NewGenerator(program *ast.Program, programName string) Generator {
@@ -26,7 +21,13 @@ func NewGenerator(program *ast.Program, programName string) Generator {
 }
 
 func (g Generator) TargetCodeRepresentation() string {
-	return g.buffer.String()
+	// remove extra newlines
+	regex, err := regexp.Compile("\n\n")
+	if err != nil {
+		return ""
+	}
+	s := regex.ReplaceAllString(g.buffer.String(), "\n")
+	return s
 }
 
 func (g Generator) Generate() Generator {
@@ -77,27 +78,39 @@ func (g Generator) eval(node ast.Node) {
 	case *ast.ExpressionStatement:
 		g.buffer.WriteString(g.indentString())
 		g.eval(node.Expression)
-		g.buffer.WriteString("\n")
+		//g.buffer.WriteString("\n")
 
 	case *ast.LetStatement:
-		//g.buffer.WriteString(node.Name.Value)
 		g.buffer.WriteString(g.indentString())
-		g.eval(node.Value)
+		g.inLet = true
+		if s, ok := node.Value.(*ast.InfixExpression); ok {
+			g.eval(s)
+		} else {
+			g.buffer.WriteString(node.Name.Value + " = ")
+			g.eval(node.Value)
+		}
+		g.inLet = false
+		g.buffer.WriteString("\n")
 
 	case *ast.InExpression:
+		g.buffer.WriteString("(")
 		g.buffer.WriteString(node.Name.Value)
+		g.buffer.WriteString(" in (")
+		for i, v := range node.Values {
+			g.buffer.WriteString(v.String())
+			if i < len(node.Values)-1 {
+				g.buffer.WriteString(", ")
+			}
+		}
+		g.buffer.WriteString("))")
 
 	case *ast.IndexExpression:
-		//g.buffer.WriteString(" ")
 		g.eval(node.Left)
 		g.buffer.WriteString("[")
 
 		for _, v := range node.Index {
 			g.eval(v)
 		}
-		//for _, v := range node.Index {
-		//	g.buffer.WriteString(v.String())
-		//}
 		g.buffer.WriteString("]")
 
 		// ignore these
@@ -129,14 +142,20 @@ func (g Generator) eval(node ast.Node) {
 
 	case *ast.InfixExpression:
 		g.indentString()
-		g.buffer.WriteString("(")
-		g.eval(node.Left)
-		if node.Operator == "==" {
-			node.Operator = "="
+		if g.inIfCondition {
+			g.buffer.WriteString("(")
+			if node.Operator == "=" {
+				node.Operator = "=="
+			}
 		}
+		g.indentString()
+		g.eval(node.Left)
+
 		g.buffer.WriteString(fmt.Sprintf(" %s ", node.Operator))
 		g.eval(node.Right)
-		g.buffer.WriteString(")")
+		if g.inIfCondition {
+			g.buffer.WriteString(")")
+		}
 	}
 }
 
@@ -147,43 +166,19 @@ func (g Generator) evalProgram(program *ast.Program) {
 
 }
 
-//
-//func (g Generator) evaluateIndex(node ast.Node) string {
-//	v := node.Value.(*ast.InfixExpression)
-//
-//	switch v.Right.(type) {
-//	case *ast.IndexExpression:
-//		leftIndex := v.Left.(*ast.IndexExpression)
-//		rightIndex := v.Right.(*ast.IndexExpression)
-//		g.buffer.WriteString(fmt.Sprintf("%s %s [%s]", leftIndex.Left.String(), v.Operator, rightIndex.))
-//	default:
-//		g.buffer.WriteString(fmt.Sprintf("%s = %s", leftIndex.Left.String(), v.Operator, rightIndex.))
-//	}
-//
-//	b := bytes.Buffer{}
-//	rightIndex := v.Left.(*ast.IndexExpression)
-//
-//	for i, j := range rightIndex.Index {
-//		b.WriteString(j.String())
-//		if i < len(rightIndex.Index) -1 {
-//			b.WriteString(", ")
-//		}
-//	}
-//
-//	g.buffer.WriteString(fmt.Sprintf("%s %s [%s]", leftIndex.Left.String(), v.Operator, rightIndex.))
-//	g.eval(node.Value)
-//
-//}
-
 func (g Generator) evalBlockStatement(block *ast.BlockStatement) {
+	if block == nil {
+		return
+	}
 	for _, statement := range block.Statements {
 		g.eval(statement)
-		g.buffer.WriteString("\n")
 	}
 }
 
 func (g Generator) evalStatements(stmts []ast.Statement) {
-
+	if stmts == nil {
+		return
+	}
 	for _, statement := range stmts {
 		g.eval(statement)
 		g.buffer.WriteString("\n")
@@ -192,11 +187,23 @@ func (g Generator) evalStatements(stmts []ast.Statement) {
 }
 
 func (g Generator) evalIfExpression(ie *ast.IfExpression) {
-	g.indentString()
 	g.buffer.WriteString("if ")
+	g.inIfCondition = true
 	g.eval(ie.Condition)
-	g.buffer.WriteString(":")
+	g.inIfCondition = false
+	g.buffer.WriteString(":\n")
 	g.indent++
+	g.eval(ie.Consequence)
+	g.indent--
+	if ie.Alternative != nil {
+		g.buffer.WriteString("\n")
+		g.buffer.WriteString(g.indentString())
+		g.buffer.WriteString("else:\n")
+		g.indent++
+		g.eval(ie.Alternative)
+		g.indent--
+		g.buffer.WriteString("\n")
+	}
 }
 
 func (g Generator) indentString() string {

@@ -253,6 +253,7 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 
 	if p.peekTokenIs(token.LBRACE) { // index
 		stmt.Value = p.parseExpression(LOWEST)
+		stmt.Indent = true
 		p.nextToken()
 		return stmt
 	}
@@ -393,7 +394,7 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
 		// check for = and replace with ==
 		if p.peekToken.Type == token.ASSIGN {
-			p.peekToken = token.Token{Type: token.EQ, Literal: "=="}
+			p.peekToken = token.Token{Type: token.EQ, Literal: "="}
 		}
 		infix := p.infixParseFns[p.peekToken.Type]
 		if infix == nil {
@@ -970,7 +971,6 @@ func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
 	return exp
 }
 
-// parseAssignExpression parses a bare assignment, without a `let`.
 func (p *Parser) parseAssignExpression(name ast.Expression) ast.Expression {
 	stmt := &ast.AssignStatement{Token: p.curToken}
 	if n, ok := name.(*ast.Identifier); ok {

@@ -32,6 +32,11 @@ type Expression interface {
 	expressionNode()
 }
 
+type Indentation struct {
+	Indent   bool
+	DeIndent bool
+}
+
 // Program represents a complete program.
 type Program struct {
 	// Statements is the set of statements which the program is comprised
@@ -57,31 +62,14 @@ func (p *Program) String() string {
 }
 
 // LetStatement holds a let-statement
-type Eol struct {
-	// Token holds the token
-	Token token.Token
-}
-
-func (ls *Eol) statementNode() {}
-
-// TokenLiteral returns the literal token.
-func (ls *Eol) TokenLiteral() string { return ls.Token.Literal }
-
-// String returns this object as a string.
-func (ls *Eol) String() string {
-	return "EOL"
-}
-
-// LetStatement holds a let-statement
 type LetStatement struct {
-	// Token holds the token
 	Token token.Token
 
-	// Name is the name of the variable to which we're assigning
 	Name *Identifier
 
-	// Value is the thing we're storing in the variable.
 	Value Expression
+
+	Indentation
 }
 
 func (ls *LetStatement) statementNode() {}
@@ -374,6 +362,8 @@ type BlockStatement struct {
 
 	// Statements contain the set of statements within the block
 	Statements []Statement
+
+	Indentation
 }
 
 func (bs *BlockStatement) statementNode() {}

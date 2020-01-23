@@ -13,8 +13,6 @@ type Token struct {
 const (
 	EOF             = "EOF"
 	EOL             = "EOL"
-	CR              = "\r"
-	LF              = "\n"
 	IDENT           = "IDENT"
 	INT             = "INT"
 	FLOAT           = "FLOAT"
