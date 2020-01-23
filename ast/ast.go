@@ -658,6 +658,19 @@ func (oce *ObjectCallExpression) String() string {
 }
 
 // StringLiteral holds a string
+type NotLiteral struct {
+	Token token.Token
+}
+
+func (sl *NotLiteral) expressionNode() {}
+
+// TokenLiteral returns the literal token.
+func (sl *NotLiteral) TokenLiteral() string { return sl.Token.Literal }
+
+// String returns this object as a string.
+func (sl *NotLiteral) String() string { return sl.Token.Literal }
+
+// StringLiteral holds a string
 type StringLiteral struct {
 	// Token is the token
 	Token token.Token

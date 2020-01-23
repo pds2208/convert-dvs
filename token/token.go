@@ -12,7 +12,6 @@ type Token struct {
 // pre-defined Type
 const (
 	EOF             = "EOF"
-	EOL             = "EOL"
 	IDENT           = "IDENT"
 	INT             = "INT"
 	FLOAT           = "FLOAT"

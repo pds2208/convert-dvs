@@ -139,7 +139,6 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.ARRAY, p.parseArrayLiteral)
 	p.registerPrefix(token.DO, p.parseDo)
 	p.registerPrefix(token.LENGTH, p.parseLengthLiteral)
-	p.registerPrefix(token.EOL, p.parseLengthLiteral)
 
 	// Register infix functions
 	p.infixParseFns = make(map[token.Type]infixParseFn)

@@ -6,6 +6,51 @@ import (
 	"testing"
 )
 
+func TestAgeDfe(t *testing.T) {
+	input := `
+if dobd not in (-8,-9) and dobm not in (-8,-9) and doby not in (-8,-9) then do;
+  if put(dobd,2.)<10 then dobd1="0"||put(dobd,1.);
+  else if put(dobd,2.)>=10 then dobd1=dobd;
+  if put(dobm,2.)<10 then dobm1="0"||put(dobm,1.);
+  else if put(dobm,2.)>=10 then dobm1=dobm;
+  DOB=put(dobd1,2.)||"/"||put(dobm1,2.)||"/"||put(doby,4.);
+  DOB1 = input(put(DOB,$10.),ddmmyy10.);
+  format DOB1 ddmmyy10.;
+ end;
+ else DOB1=.;
+ if refwkd not in (-8,-9) and refwkm not in (-8,-9) and refwky not in (-8,-9) then do;
+ if refwkm <=8 and refwkd <= 31 then refwk1="31/08/"||put((refwky-1),4.);
+   else refwk1="31/08/"||put(refwky,4.);
+ if refwkm = 8 and refwkm = 31 then refwk1 = refwk1="31/08/"||put(refwky,4.);
+  refdat = input(put(refwk1,$10.),ddmmyy10.);
+   format refdat ddmmyy10.;
+  end;
+
+ if ioutcome^=3 then do;
+ if dobd^=-8 and dobm^=-8 and doby^=-8 then AGEDFE=int((intck('month',DOB1,refdat))/12);
+  else AGEDFE=-8;
+ end;
+ else AGEDFE=-9;
+if AGEDFE GE 99 then AGEDFE=99;
+if (ioutcome ne 3 and age eq 0) then AGEDFE=0;
+`
+	l := lexer.New(input)
+	p := parser.New(l)
+
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if program == nil {
+		t.Fatalf("ParseProgram() returned nil")
+	}
+	g := NewGenerator(program, "dv_name")
+
+	//print(g.GeneratePreamble().PythonRepresentation())
+
+	s := g.Generate().TargetCodeRepresentation()
+	print(s)
+}
+
 func TestGenerator(t *testing.T) {
 	input := `
 array xrn {256} xrn1-xrn256;
@@ -53,7 +98,7 @@ do i = 1 to 16;
                 
                     do k = 1 to 16;
                         if famunitn{k} = Oldfamunit then smsxfun{k} = Newfamunit;
-                        else if famunitn{k} > Newfamunit then smsxfun{k} = smsxfun{k} - 1;
+                        else if famunitn{k} > Newfamunit then smsxfun{k} = smsxfun{k} - 1.0;
                         end;
                     end;
                 end;

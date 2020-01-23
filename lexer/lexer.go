@@ -112,17 +112,18 @@ func (l *Lexer) NextToken() token.Token {
 	case rune('.'):
 		tok = newToken(token.PERIOD, l.ch)
 	case '+':
-		if l.peekChar() == rune('+') {
-			ch := l.ch
-			l.readChar()
-			tok = token.Token{Type: token.PLUS_PLUS, Literal: string(ch) + string(l.ch)}
-		} else if l.peekChar() == rune('=') {
-			ch := l.ch
-			l.readChar()
-			tok = token.Token{Type: token.PLUS_EQUALS, Literal: string(ch) + string(l.ch)}
-		} else {
-			tok = newToken(token.PLUS, l.ch)
-		}
+		tok = newToken(token.PLUS, l.ch)
+		//if l.peekChar() == rune('+') {
+		//	ch := l.ch
+		//	l.readChar()
+		//	tok = token.Token{Type: token.PLUS_PLUS, Literal: string(ch) + string(l.ch)}
+		//} else if l.peekChar() == rune('=') {
+		//	ch := l.ch
+		//	l.readChar()
+		//	tok = token.Token{Type: token.PLUS_EQUALS, Literal: string(ch) + string(l.ch)}
+		//} else {
+		//	tok = newToken(token.PLUS, l.ch)
+		//}
 	case '%':
 		tok = newToken(token.MOD, l.ch)
 	case '{':
@@ -261,32 +262,8 @@ func newToken(tokenType token.Type, ch rune) token.Token {
 	return token.Token{Type: tokenType, Literal: string(ch)}
 }
 
-// readIdentifier is designed to read an identifier (name of variable,
-// function, etc).
-//
-// However there is a complication due to our historical implementation
-// of the standard library.  We really want to stop identifiers if we hit
-// a period, to allow method-calls to work on objects.
-//
-// So with input like this:
-//
-//   a.blah();
-//
-// Our identifier should be "a" (then we have a period, then a second
-// identifier "blah", followed by opening & closing parenthesis).
-//
-// However we also have to cover the case of:
-//
-//    string.toupper( "blah" );
-//    os.getenv( "PATH" );
-//    ..
-//
-// So we have a horrid implementation..
 func (l *Lexer) readIdentifier() string {
 
-	//
-	// Functions which are permitted to have dots in their name.
-	//
 	valid := map[string]bool{
 		"directory.glob":     true,
 		"math.abs":           true,

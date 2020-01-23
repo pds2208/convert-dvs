@@ -122,6 +122,9 @@ func (g Generator) eval(node ast.Node) {
 	case *ast.IntegerLiteral:
 		g.buffer.WriteString(fmt.Sprintf("%d", node.Value))
 
+	case *ast.FloatLiteral:
+		g.buffer.WriteString(fmt.Sprintf("%g", node.Value))
+
 	case *ast.Boolean:
 		g.buffer.WriteString(fmt.Sprintf("%t", node.Value))
 
