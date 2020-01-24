@@ -91,7 +91,7 @@ do i = 1 to 16;
     do j = i to 16;
 
         if livwthn{i} = 3 and livwthn{j} = 3 then do;
-            if (j > i) and (xrel2{j,i} in (2,20)) then do;
+            if (j > i) and (xrel2{j,i} not in (2,20)) then do;
                 if famunitn{j} > famunitn{i} then do;
                     Oldfamunit = famunitn{j};
                     Newfamunit = famunitn{i};

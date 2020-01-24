@@ -23,26 +23,29 @@ type (
 const (
 	_ int = iota
 	LOWEST
-	COND         // OR or AND
+	COND // OR or AND
+
 	ASSIGN       // =
 	TERNARY      // ? :
 	EQUALS       // == or !=
 	REGEXP_MATCH // !~ ~=
 	LESSGREATER  // > or <
-	IN           // in(x,y,z)
-	SUM          // + or -
-	PRODUCT      // * or /
-	POWER        // **
-	MOD          // %
-	PREFIX       // -X or !X
-	CALL         // myFunction(X)
-	INDEX        // array[index], map[key]
+	NOT
+	IN      // in(x,y,z)
+	SUM     // + or -
+	PRODUCT // * or /
+	POWER   // **
+	MOD     // %
+	PREFIX  // -X or !X
+	CALL    // myFunction(X)
+	INDEX   // array[index], map[key]
 )
 
 // each token precedence
 var precedences = map[token.Type]int{
 	token.QUESTION:     TERNARY,
 	token.ASSIGN:       ASSIGN,
+	token.NOT:          NOT,
 	token.EQ:           EQUALS,
 	token.NOT_EQ:       EQUALS,
 	token.LT:           LESSGREATER,
@@ -72,38 +75,16 @@ var precedences = map[token.Type]int{
 
 // Parser object
 type Parser struct {
-	// l is our lexer
 	l *lexer.Lexer
 
-	// prevToken holds the previous token from our lexer.
-	// (used for "++" + "--")
-	prevToken token.Token
-
-	// curToken holds the current token from our lexer.
-	curToken token.Token
-
-	// peekToken holds the next token which will come from the lexer.
-	peekToken token.Token
-
-	// errors holds parsing-errors.
-	errors []string
-
-	// prefixParseFns holds a map of parsing methods for
-	// prefix-based syntax.
-	prefixParseFns map[token.Type]prefixParseFn
-
-	// infixParseFns holds a map of parsing methods for
-	// infix-based syntax.
-	infixParseFns map[token.Type]infixParseFn
-
-	// postfixParseFns holds a map of parsing methods for
-	// postfix-based syntax.
+	prevToken       token.Token
+	curToken        token.Token
+	peekToken       token.Token
+	errors          []string
+	prefixParseFns  map[token.Type]prefixParseFn
+	infixParseFns   map[token.Type]infixParseFn
 	postfixParseFns map[token.Type]postfixParseFn
-
-	// are we inside a ternary expression?
-	//
-	// Nested ternary expressions are illegal :)
-	tern bool
+	tern            bool
 }
 
 // New returns our new parser-object.
@@ -139,6 +120,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.ARRAY, p.parseArrayLiteral)
 	p.registerPrefix(token.DO, p.parseDo)
 	p.registerPrefix(token.LENGTH, p.parseLengthLiteral)
+	p.registerPrefix(token.PUT, p.parsePutExpression)
 
 	// Register infix functions
 	p.infixParseFns = make(map[token.Type]infixParseFn)
@@ -159,6 +141,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.MOD, p.parseInfixExpression)
 	p.registerInfix(token.NOT_CONTAINS, p.parseInfixExpression)
 	p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
+	p.registerInfix(token.NOT, p.parseNotLiteral)
 	p.registerInfix(token.OR, p.parseInfixExpression)
 	p.registerInfix(token.PERIOD, p.parseMethodCallExpression)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -491,6 +474,16 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	precedence := p.curPrecedence()
 	p.nextToken()
 	expression.Right = p.parseExpression(precedence)
+	return expression
+}
+
+// parseInfixExpression parses an infix-based expression.
+func (p *Parser) parseNotLiteral(left ast.Expression) ast.Expression {
+	expression := &ast.NotLiteral{
+		Token: p.curToken,
+		Name:  left,
+	}
+
 	return expression
 }
 
@@ -924,11 +917,65 @@ func (p *Parser) parseInList(end token.Type) []ast.Expression {
 	return list
 }
 
+func (p *Parser) parsePutExpression() ast.Expression {
+	exp := &ast.PutExpression{Token: p.curToken}
+
+	if !p.expectPeek(token.LPAREN) {
+		return nil
+	}
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+
+	t := p.parseIdentifier()
+	if n, ok := t.(*ast.Identifier); ok {
+		exp.Name = n
+	} else {
+		msg := fmt.Sprintf("expected put expresion to contain (Identifier, Integer), got %s instead around line %d",
+			t.TokenLiteral(), p.l.GetLine())
+		p.errors = append(p.errors, msg)
+	}
+	p.nextToken()
+	if !p.curTokenIs(token.COMMA) {
+		return nil
+	}
+	p.nextToken()
+	t = p.parseIntegerLiteral()
+	if n, ok := t.(*ast.IntegerLiteral); ok {
+		exp.Value = n
+	} else {
+		msg := fmt.Sprintf("expected put expresion to contain  (Identifier, Integer), got %s instead around line %d",
+			t.TokenLiteral(), p.l.GetLine())
+		p.errors = append(p.errors, msg)
+	}
+	p.nextToken()
+	if p.curTokenIs(token.PERIOD) {
+		p.nextToken()
+	}
+	if !p.curTokenIs(token.RPAREN) {
+		return nil
+	}
+	return exp
+}
+
 // parseInfixExpression parses an in expression.
 func (p *Parser) parseInExpression(name ast.Expression) ast.Expression {
 	exp := &ast.InExpression{Token: p.curToken}
 
 	switch name.(type) {
+
+	case *ast.NotLiteral:
+		n := name.(*ast.NotLiteral)
+		exp.Not = true
+		switch n.Name.(type) {
+		case *ast.IndexExpression:
+			t := n.Name.(*ast.IndexExpression)
+			exp.Name = t.Left.(*ast.Identifier)
+
+		case *ast.Identifier:
+			exp.Name = n.Name.(*ast.Identifier)
+		}
+
 	case *ast.Identifier:
 		exp.Name = name.(*ast.Identifier)
 

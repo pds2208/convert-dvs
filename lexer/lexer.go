@@ -113,17 +113,6 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.PERIOD, l.ch)
 	case '+':
 		tok = newToken(token.PLUS, l.ch)
-		//if l.peekChar() == rune('+') {
-		//	ch := l.ch
-		//	l.readChar()
-		//	tok = token.Token{Type: token.PLUS_PLUS, Literal: string(ch) + string(l.ch)}
-		//} else if l.peekChar() == rune('=') {
-		//	ch := l.ch
-		//	l.readChar()
-		//	tok = token.Token{Type: token.PLUS_EQUALS, Literal: string(ch) + string(l.ch)}
-		//} else {
-		//	tok = newToken(token.PLUS, l.ch)
-		//}
 	case '%':
 		tok = newToken(token.MOD, l.ch)
 	case '{':

@@ -73,6 +73,8 @@ const (
 	QUESTION        = "?"
 	ILLEGAL         = "ILLEGAL"
 	LENGTH          = "LENGTH"
+	NOT             = "NOT"
+	PUT             = "PUT"
 )
 
 // reversed keywords
@@ -98,6 +100,8 @@ var keywords = map[string]Type{
 	"%macro":   FUNCTION,
 	"%mend":    END_FUNCTION,
 	"length":   LENGTH,
+	"not":      NOT,
+	"put":      PUT,
 }
 
 // LookupIdentifier used to determinate whether identifier is keyword nor not

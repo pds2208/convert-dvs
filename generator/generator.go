@@ -78,7 +78,6 @@ func (g Generator) eval(node ast.Node) {
 	case *ast.ExpressionStatement:
 		g.buffer.WriteString(g.indentString())
 		g.eval(node.Expression)
-		//g.buffer.WriteString("\n")
 
 	case *ast.LetStatement:
 		g.buffer.WriteString(g.indentString())
@@ -95,6 +94,9 @@ func (g Generator) eval(node ast.Node) {
 	case *ast.InExpression:
 		g.buffer.WriteString("(")
 		g.buffer.WriteString(node.Name.Value)
+		if node.Not {
+			g.buffer.WriteString(" not")
+		}
 		g.buffer.WriteString(" in (")
 		for i, v := range node.Values {
 			g.buffer.WriteString(v.String())
