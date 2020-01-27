@@ -9,6 +9,9 @@ import (
 
 func TestV2Statements(t *testing.T) {
 	input := `
+if dobd^=-8 and dobm^=-8 and doby^=-8 then AGEDFE=int((intck('month',DOB1,refdat))/12);
+  else AGEDFE=-8;
+ end;
 if dobd not in (-8,-9) and dobm not in (-8,-9) and doby not in (-8,-9) then do;
   if put(dobd,2.)<10 then dobd1="0"||put(dobd,1.);
   else if put(dobd,2.)>=10 then dobd1=dobd;
@@ -67,7 +70,6 @@ func TestVarStatements(t *testing.T) {
 	else WHPTYPEP ="99";
 
 `
-
 	l := lexer.New(input)
 	p := New(l)
 

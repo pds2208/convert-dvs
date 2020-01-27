@@ -8,27 +8,24 @@ import (
 	"convert/token"
 )
 
-// Lexer holds our object-state.
 type Lexer struct {
-	// The current character position
 	position int
 
-	// The next character position
 	readPosition int
 
-	//The current character
 	ch rune
 
-	// A rune slice of our input string
 	characters []rune
 
-	// Previous token.
 	prevToken token.Token
+
+	orig string
 }
 
 // New a Lexer instance from string input.
 func New(input string) *Lexer {
 	l := &Lexer{characters: []rune(input)}
+	l.orig = input
 	l.readChar()
 	return l
 }
@@ -41,7 +38,7 @@ func (l *Lexer) GetLine() int {
 
 	for i < l.readPosition && i < chars {
 
-		if l.characters[i] == rune('\n') {
+		if l.characters[i] == '\n' {
 			line++
 		}
 
@@ -61,37 +58,34 @@ func (l *Lexer) readChar() {
 	l.readPosition++
 }
 
-// NextToken to read next token, skipping the white space.
 func (l *Lexer) NextToken() token.Token {
 	var tok token.Token
 	l.skipWhitespace()
 
-	// skip single-line comments
-	if l.ch == rune('/') && l.peekChar() == rune('/') {
+	if l.ch == '/' && l.peekChar() == '/' {
 		l.skipComment()
 		return l.NextToken()
 	}
 
-	// skip shebang
-	if l.ch == rune('#') && l.peekChar() == rune('!') && l.position == 0 {
+	if l.ch == '#' && l.peekChar() == '!' && l.position == 0 {
 		l.skipComment()
 		return l.NextToken()
 	}
 
 	// multi-line comments
-	if l.ch == rune('/') && l.peekChar() == rune('*') {
+	if l.ch == '/' && l.peekChar() == '*' {
 		l.skipMultiLineComment()
 	}
 
 	switch l.ch {
 	case '&':
-		if l.peekChar() == rune('&') {
+		if l.peekChar() == '&' {
 			ch := l.ch
 			l.readChar()
 			tok = token.Token{Type: token.AND, Literal: string(ch) + string(l.ch)}
 		}
 	case '|':
-		if l.peekChar() == rune('|') {
+		if l.peekChar() == '|' {
 			ch := l.ch
 			l.readChar()
 			tok = token.Token{Type: token.OR, Literal: string(ch) + string(l.ch)}
@@ -109,30 +103,20 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.RPAREN, l.ch)
 	case ',':
 		tok = newToken(token.COMMA, l.ch)
-	case rune('.'):
-		tok = newToken(token.PERIOD, l.ch)
+	//case '.':
+	//	tok = newToken(token.PERIOD, l.ch)
 	case '+':
 		tok = newToken(token.PLUS, l.ch)
-	case '%':
-		tok = newToken(token.MOD, l.ch)
+	//case '%':
+	//	tok = newToken(token.MOD, l.ch)
 	case '{':
 		tok = newToken(token.LBRACE, l.ch)
 	case '}':
 		tok = newToken(token.RBRACE, l.ch)
 	case '-':
-		if l.peekChar() == rune('-') {
-			ch := l.ch
-			l.readChar()
-			tok = token.Token{Type: token.MINUS_MINUS, Literal: string(ch) + string(l.ch)}
-		} else if l.peekChar() == rune('=') {
-			ch := l.ch
-			l.readChar()
-			tok = token.Token{Type: token.MINUS_EQUALS, Literal: string(ch) + string(l.ch)}
-		} else {
-			tok = newToken(token.MINUS, l.ch)
-		}
+		tok = newToken(token.MINUS, l.ch)
 	case '/':
-		if l.peekChar() == rune('=') {
+		if l.peekChar() == '=' {
 			ch := l.ch
 			l.readChar()
 			tok = token.Token{Type: token.SLASH_EQUALS, Literal: string(ch) + string(l.ch)}
@@ -167,11 +151,11 @@ func (l *Lexer) NextToken() token.Token {
 			}
 		}
 	case '*':
-		if l.peekChar() == rune('*') {
+		if l.peekChar() == '*' {
 			ch := l.ch
 			l.readChar()
 			tok = token.Token{Type: token.POW, Literal: string(ch) + string(l.ch)}
-		} else if l.peekChar() == rune('=') {
+		} else if l.peekChar() == '=' {
 			ch := l.ch
 			l.readChar()
 			tok = token.Token{Type: token.ASTERISK_EQUALS, Literal: string(ch) + string(l.ch)}
@@ -179,7 +163,7 @@ func (l *Lexer) NextToken() token.Token {
 			tok = newToken(token.ASTERISK, l.ch)
 		}
 	case '<':
-		if l.peekChar() == rune('=') {
+		if l.peekChar() == '=' {
 			ch := l.ch
 			l.readChar()
 			tok = token.Token{Type: token.LT_EQUALS, Literal: string(ch) + string(l.ch)}
@@ -187,7 +171,7 @@ func (l *Lexer) NextToken() token.Token {
 			tok = newToken(token.LT, l.ch)
 		}
 	case '>':
-		if l.peekChar() == rune('=') {
+		if l.peekChar() == '=' {
 			ch := l.ch
 			l.readChar()
 			tok = token.Token{Type: token.GT_EQUALS, Literal: string(ch) + string(l.ch)}
@@ -195,14 +179,14 @@ func (l *Lexer) NextToken() token.Token {
 			tok = newToken(token.GT, l.ch)
 		}
 	case '~':
-		if l.peekChar() == rune('=') {
+		if l.peekChar() == '=' {
 			ch := l.ch
 			l.readChar()
 			tok = token.Token{Type: token.CONTAINS, Literal: string(ch) + string(l.ch)}
 		}
 
 	case '^':
-		if l.peekChar() == rune('=') {
+		if l.peekChar() == '=' {
 			ch := l.ch
 			l.readChar()
 			tok = token.Token{Type: token.NOT_EQ, Literal: string(ch) + string(l.ch)}
@@ -211,6 +195,9 @@ func (l *Lexer) NextToken() token.Token {
 
 		}
 	case '"':
+		tok.Type = token.STRING
+		tok.Literal = l.readString()
+	case '\'':
 		tok.Type = token.STRING
 		tok.Literal = l.readString()
 	case '`':
@@ -253,99 +240,13 @@ func newToken(tokenType token.Type, ch rune) token.Token {
 
 func (l *Lexer) readIdentifier() string {
 
-	valid := map[string]bool{
-		"directory.glob":     true,
-		"math.abs":           true,
-		"math.random":        true,
-		"math.sqrt":          true,
-		"os.environment":     true,
-		"os.getenv":          true,
-		"os.setenv":          true,
-		"string.interpolate": true,
-	}
-
-	//
-	// Types which will have valid methods.
-	//
-	types := []string{"string.",
-		"array.",
-		"integer.",
-		"float.",
-		"hash.",
-		"object."}
-
 	id := ""
 
-	//
-	// Save our position, in case we need to jump backwards in
-	// our scanning.  Yeah.
-	//
-	position := l.position
-	rposition := l.readPosition
-
-	//
-	// Build up our identifier, handling only valid characters.
-	//
-	// NOTE: This WILL consider the period valid, allowing the
-	// parsing of "foo.bar", "os.getenv", "blah.blah.blah", etc.
-	//
 	for isIdentifier(l.ch) {
 		id += string(l.ch)
 		l.readChar()
 	}
 
-	//
-	// Now we to see if our identifier had a period inside it.
-	//
-	if strings.Contains(id, ".") {
-
-		// Is it a known-good function?
-		ok := valid[id]
-
-		// If not see if it has a type-prefix, which will
-		// let the definition succeed.
-		if ok == false {
-			for _, i := range types {
-				if strings.HasPrefix(id, i) {
-					ok = true
-				}
-			}
-		}
-
-		//
-		// Not permitted?  Then we abort.
-		//
-		// We reset our lexer-state to the position just ahead
-		// of the period.  This will then lead to a syntax
-		// error.
-		//
-		// Which probably means our lexer should abort instead.
-		//
-		// For the moment we'll leave as-is.
-		//
-		if !ok {
-
-			//
-			// OK first of all we truncate our identifier
-			// at the position before the "."
-			//
-			offset := strings.Index(id, ".")
-			id = id[:offset]
-
-			//
-			// Now we have to move backwards - as a quickie
-			// We'll reset our position and move forwards
-			// the length of the bits we went too-far.
-			l.position = position
-			l.readPosition = rposition
-			for offset > 0 {
-				l.readChar()
-				offset--
-			}
-		}
-	}
-
-	// And now our pain is over.
 	return id
 }
 
@@ -370,23 +271,17 @@ func (l *Lexer) skipMultiLineComment() {
 	found := false
 
 	for !found {
-		// break at the end of our input.
 		if l.ch == rune(0) {
 			found = true
 		}
 
-		// otherwise keep going until we find "*/".
 		if l.ch == '*' && l.peekChar() == '/' {
 			found = true
-
-			// Our current position is "*", so skip
-			// forward to consume the "/".
 			l.readChar()
 		}
 
 		l.readChar()
 	}
-
 	l.skipWhitespace()
 }
 
@@ -455,7 +350,7 @@ func (l *Lexer) readString() string {
 
 	for {
 		l.readChar()
-		if l.ch == '"' {
+		if l.ch == '"' || l.ch == '\'' || l.ch == 0 {
 			break
 		}
 
@@ -561,7 +456,7 @@ func (l *Lexer) peekChar() rune {
 // determinate ch is identifier or not
 func isIdentifier(ch rune) bool {
 
-	if unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '.' || ch == '?' || ch == '_' {
+	if unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_' {
 		return true
 	}
 
@@ -570,7 +465,7 @@ func isIdentifier(ch rune) bool {
 
 // is white space
 func isWhitespace(ch rune) bool {
-	return ch == rune(' ') || ch == rune('\t') || ch == rune('\n') || ch == rune('\r')
+	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '.' || ch == '$'
 }
 
 // is Digit

@@ -508,23 +508,23 @@ func (fl *FunctionLiteral) String() string {
 
 }
 
-type PutExpression struct {
+type FormatExpression struct {
 	Token token.Token
-	Name  *Identifier
-	Value *IntegerLiteral
+	From  *Identifier
+	To    *Identifier
 }
 
-func (put *PutExpression) expressionNode() {}
+func (put *FormatExpression) expressionNode() {}
 
-func (put *PutExpression) TokenLiteral() string {
+func (put *FormatExpression) TokenLiteral() string {
 	return put.Token.Literal
 }
 
-func (put *PutExpression) String() string {
+func (put *FormatExpression) String() string {
 	var out bytes.Buffer
-	out.WriteString("put(")
-	out.WriteString(put.Name.String() + ",")
-	out.WriteString(put.Value.String() + ")")
+	out.WriteString("format ")
+	out.WriteString(put.From.String())
+	out.WriteString(put.To.String())
 	return out.String()
 }
 
