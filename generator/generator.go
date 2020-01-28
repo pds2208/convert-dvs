@@ -1,10 +1,11 @@
 package generator
 
 import (
+	"bufio"
 	"bytes"
 	"convert/ast"
 	"fmt"
-	"regexp"
+	"strings"
 )
 
 type Generator struct {
@@ -22,12 +23,28 @@ func NewGenerator(program *ast.Program, programName string) Generator {
 
 func (g Generator) TargetCodeRepresentation() string {
 	// remove extra newlines
-	regex, err := regexp.Compile("\n\n")
+	lines, err := StringToLines(g.buffer.String())
 	if err != nil {
 		return ""
 	}
-	s := regex.ReplaceAllString(g.buffer.String(), "\n")
-	return s
+	var b bytes.Buffer
+	for _, v := range lines {
+		a := strings.TrimRight(v, " ")
+		if a != "" {
+			b.WriteString(v + "\n")
+		}
+	}
+
+	return b.String()
+}
+
+func StringToLines(s string) (lines []string, err error) {
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	err = scanner.Err()
+	return
 }
 
 func (g Generator) Generate() Generator {
@@ -82,12 +99,11 @@ func (g Generator) eval(node ast.Node) {
 	case *ast.LetStatement:
 		g.buffer.WriteString(g.indentString())
 		g.inLet = true
-		if s, ok := node.Value.(*ast.InfixExpression); ok {
-			g.eval(s)
-		} else {
-			g.buffer.WriteString(node.Name.Value + " = ")
-			g.eval(node.Value)
+		g.buffer.WriteString(node.Name.Value + " = ")
+		if node.Value == nil {
+			g.buffer.WriteString("\"\"")
 		}
+		g.eval(node.Value)
 		g.inLet = false
 		g.buffer.WriteString("\n")
 
@@ -118,8 +134,21 @@ func (g Generator) eval(node ast.Node) {
 		// ignore these
 	case *ast.LengthLiteral:
 
+	case *ast.CallExpression:
+		g.buffer.WriteString(node.Function.String() + "(")
+		for i, v := range node.Arguments {
+			g.eval(v)
+			if i < len(node.Arguments)-1 {
+				g.buffer.WriteString(",")
+			}
+		}
+		g.buffer.WriteString(")")
+
 	case *ast.ArrayStatement:
 		g.buffer.WriteString(node.Name.Value + " = []\n")
+
+	case *ast.StringLiteral:
+		g.buffer.WriteString(fmt.Sprintf("\"%s\"", node.Value))
 
 	case *ast.IntegerLiteral:
 		g.buffer.WriteString(fmt.Sprintf("%d", node.Value))
@@ -131,7 +160,6 @@ func (g Generator) eval(node ast.Node) {
 		g.buffer.WriteString(fmt.Sprintf("%t", node.Value))
 
 	case *ast.PrefixExpression:
-		g.buffer.WriteString(g.indentString())
 		g.buffer.WriteString(fmt.Sprintf("%s", node.Operator))
 		g.eval(node.Right)
 
@@ -139,21 +167,23 @@ func (g Generator) eval(node ast.Node) {
 		g.buffer.WriteString(fmt.Sprintf("%s", node.Value))
 
 	case *ast.DoLiteral:
-		g.indentString()
 		g.buffer.WriteString(fmt.Sprintf("for %s in range(%s, %s):\n",
 			node.Variable.String(), node.From.String(), node.To.String()))
 		g.indent++
 		g.eval(node.Statements)
 
+	case *ast.FormatExpression:
+
 	case *ast.InfixExpression:
-		g.indentString()
 		if g.inIfCondition {
 			g.buffer.WriteString("(")
-			if node.Operator == "=" {
+			switch node.Operator {
+			case "=":
 				node.Operator = "=="
+			case "^=":
+				node.Operator = "!="
 			}
 		}
-		g.indentString()
 		g.eval(node.Left)
 
 		g.buffer.WriteString(fmt.Sprintf(" %s ", node.Operator))
@@ -168,16 +198,17 @@ func (g Generator) evalProgram(program *ast.Program) {
 	for _, statement := range program.Statements {
 		g.eval(statement)
 	}
-
 }
 
 func (g Generator) evalBlockStatement(block *ast.BlockStatement) {
 	if block == nil {
 		return
 	}
+	g.buffer.WriteString("\n")
 	for _, statement := range block.Statements {
 		g.eval(statement)
 	}
+	g.buffer.WriteString("\n")
 }
 
 func (g Generator) evalStatements(stmts []ast.Statement) {
@@ -188,7 +219,6 @@ func (g Generator) evalStatements(stmts []ast.Statement) {
 		g.eval(statement)
 		g.buffer.WriteString("\n")
 	}
-
 }
 
 func (g Generator) evalIfExpression(ie *ast.IfExpression) {
@@ -201,7 +231,7 @@ func (g Generator) evalIfExpression(ie *ast.IfExpression) {
 	g.eval(ie.Consequence)
 	g.indent--
 	if ie.Alternative != nil {
-		g.buffer.WriteString("\n")
+		//g.buffer.WriteString("\n")
 		g.buffer.WriteString(g.indentString())
 		g.buffer.WriteString("else:\n")
 		g.indent++

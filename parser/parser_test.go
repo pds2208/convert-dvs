@@ -9,6 +9,7 @@ import (
 
 func TestV2Statements(t *testing.T) {
 	input := `
+if put(dobd,2.)<10 then dobd1="0"||put(dobd,1.);
 if dobd not in (-8,-9) and dobm not in (-8,-9) and doby not in (-8,-9) then do;
   if put(dobd,2.)<10 then dobd1="0"||put(dobd,1.);
   else if put(dobd,2.)>=10 then dobd1=dobd;

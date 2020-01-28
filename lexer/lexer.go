@@ -222,7 +222,7 @@ func (l *Lexer) NextToken() token.Token {
 		case "se":
 			tok = token.Token{Type: token.LT_EQUALS, Literal: "<="}
 		case "ne":
-			tok = token.Token{Type: token.NOT_EQ, Literal: "~="}
+			tok = token.Token{Type: token.NOT_EQ, Literal: "!="}
 		case "eq":
 			tok = token.Token{Type: token.EQ, Literal: "=="}
 		}
