@@ -75,6 +75,12 @@ const (
 	LENGTH          = "LENGTH"
 	NOT             = "NOT"
 	FORMAT          = "FORMAT"
+	SAS_GE          = "GE"
+	SAS_LT          = "LT"
+	SAS_SE          = "SE"
+	SAS_NE          = "NE"
+	SAS_EQ          = "EQ"
+	SAS_GT          = "GT"
 )
 
 // reversed keywords
@@ -102,6 +108,12 @@ var keywords = map[string]Type{
 	"length":   LENGTH,
 	"not":      NOT,
 	"format":   FORMAT,
+	"ge":       SAS_GE,
+	"gt":       SAS_GT,
+	"lt":       SAS_LT,
+	"se":       SAS_SE,
+	"ne":       SAS_NE,
+	"eq":       SAS_EQ,
 }
 
 // LookupIdentifier used to determinate whether identifier is keyword nor not

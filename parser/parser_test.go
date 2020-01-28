@@ -9,9 +9,6 @@ import (
 
 func TestV2Statements(t *testing.T) {
 	input := `
-if dobd^=-8 and dobm^=-8 and doby^=-8 then AGEDFE=int((intck('month',DOB1,refdat))/12);
-  else AGEDFE=-8;
- end;
 if dobd not in (-8,-9) and dobm not in (-8,-9) and doby not in (-8,-9) then do;
   if put(dobd,2.)<10 then dobd1="0"||put(dobd,1.);
   else if put(dobd,2.)>=10 then dobd1=dobd;
@@ -22,19 +19,20 @@ if dobd not in (-8,-9) and dobm not in (-8,-9) and doby not in (-8,-9) then do;
   format DOB1 ddmmyy10.;
  end;
  else DOB1=.;
+
  if refwkd not in (-8,-9) and refwkm not in (-8,-9) and refwky not in (-8,-9) then do;
- if refwkm <=8 and refwkd <= 31 then refwk1="31/08/"||put((refwky-1),4.);
-   else refwk1="31/08/"||put(refwky,4.);
- if refwkm = 8 and refwkm = 31 then refwk1 = refwk1="31/08/"||put(refwky,4.);
-  refdat = input(put(refwk1,$10.),ddmmyy10.);
-   format refdat ddmmyy10.;
-  end;
+    if refwkm <=8 and refwkd <= 31 then refwk1="31/08/"||put((refwky-1),4.);
+    else refwk1="31/08/"||put(refwky,4.);
+    if refwkm = 8 and refwkm = 31 then refwk1 = refwk1="31/08/"||put(refwky,4.);
+    refdat = input(put(refwk1,$10.),ddmmyy10.);
+    format refdat ddmmyy10.;
+end;
 
  if ioutcome^=3 then do;
- if dobd^=-8 and dobm^=-8 and doby^=-8 then AGEDFE=int((intck('month',DOB1,refdat))/12);
-  else AGEDFE=-8;
- end;
- else AGEDFE=-9;
+    if dobd^=-8 and dobm^=-8 and doby^=-8 then AGEDFE=int((intck('month',DOB1,refdat))/12);
+    else AGEDFE=-8;
+end;
+else AGEDFE=-9;
 if AGEDFE GE 99 then AGEDFE=99;
 if (ioutcome ne 3 and age eq 0) then AGEDFE=0;
 `
@@ -47,8 +45,8 @@ if (ioutcome ne 3 and age eq 0) then AGEDFE=0;
 	if program == nil {
 		t.Fatalf("ParseProgram() returned nil")
 	}
-	if len(program.Statements) != 4 {
-		t.Fatalf("program.Statements does not contain 4 statements. got=%d", len(program.Statements))
+	if len(program.Statements) != 5 {
+		t.Fatalf("program.Statements does not contain 5 statements. got=%d", len(program.Statements))
 	}
 
 }

@@ -201,7 +201,7 @@ func (p *Parser) ParseProgram() *ast.Program {
 	program.Statements = []ast.Statement{}
 	for p.curToken.Type != token.EOF {
 		stmt, err := p.parseStatement()
-		if err != nil {
+		if err == nil {
 			program.Statements = append(program.Statements, stmt)
 		}
 		p.nextToken()
@@ -245,11 +245,10 @@ func (p *Parser) parseLetStatement() (*ast.LetStatement, error) {
 		return nil, fmt.Errorf(msg)
 	}
 
-	p.nextToken()
-
-	if p.curTokenIs(token.SEMICOLON) {
+	if p.peekTokenIs(token.SEMICOLON) { // if there is a aaa=. or aaa= statement set value to nil
 		stmt.Value = nil
 	} else {
+		p.nextToken()
 		stmt.Value = p.parseExpression(LOWEST)
 	}
 
@@ -775,9 +774,7 @@ func (p *Parser) parseLengthLiteral() ast.Expression {
 		return nil
 	}
 	length.Name = p.parseIdentifier()
-	if !p.expectPeek(token.DOLLAR) {
-		return nil
-	}
+
 	p.nextToken()
 	length.Value = p.parseIntegerLiteral()
 	return length

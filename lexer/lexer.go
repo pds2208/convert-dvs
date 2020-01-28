@@ -9,17 +9,12 @@ import (
 )
 
 type Lexer struct {
-	position int
-
+	position     int
 	readPosition int
-
-	ch rune
-
-	characters []rune
-
-	prevToken token.Token
-
-	orig string
+	ch           rune
+	characters   []rune
+	prevToken    token.Token
+	orig         string
 }
 
 // New a Lexer instance from string input.
@@ -41,7 +36,6 @@ func (l *Lexer) GetLine() int {
 		if l.characters[i] == '\n' {
 			line++
 		}
-
 		i++
 	}
 	return line
@@ -72,7 +66,6 @@ func (l *Lexer) NextToken() token.Token {
 		return l.NextToken()
 	}
 
-	// multi-line comments
 	if l.ch == '/' && l.peekChar() == '*' {
 		l.skipMultiLineComment()
 	}
@@ -103,12 +96,8 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.RPAREN, l.ch)
 	case ',':
 		tok = newToken(token.COMMA, l.ch)
-	//case '.':
-	//	tok = newToken(token.PERIOD, l.ch)
 	case '+':
 		tok = newToken(token.PLUS, l.ch)
-	//case '%':
-	//	tok = newToken(token.MOD, l.ch)
 	case '{':
 		tok = newToken(token.LBRACE, l.ch)
 	case '}':
@@ -209,21 +198,35 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.RBRACKET, l.ch)
 	case ':':
 		tok = newToken(token.COLON, l.ch)
-	case '$':
-		tok = newToken(token.DOLLAR, l.ch)
 	case rune(0):
 		tok.Literal = ""
 		tok.Type = token.EOF
 	default:
-
 		if isDigit(l.ch) {
 			tok := l.readDecimal()
 			l.prevToken = tok
 			return tok
-
 		}
+
 		tok.Literal = l.readIdentifier()
 		tok.Type = token.LookupIdentifier(tok.Literal)
+		// SAS has two ways of doing one thing e.g. ge and >=. Nice one SAS
+
+		switch strings.ToLower(tok.Literal) {
+		case "ge":
+			tok = token.Token{Type: token.GT_EQUALS, Literal: ">="}
+		case "gt":
+			tok = token.Token{Type: token.GT, Literal: ">"}
+		case "lt":
+			tok = token.Token{Type: token.LT, Literal: "<"}
+		case "se":
+			tok = token.Token{Type: token.LT_EQUALS, Literal: "<="}
+		case "ne":
+			tok = token.Token{Type: token.NOT_EQ, Literal: "~="}
+		case "eq":
+			tok = token.Token{Type: token.EQ, Literal: "=="}
+		}
+
 		l.prevToken = tok
 
 		return tok
@@ -321,22 +324,8 @@ func (l *Lexer) readUntilWhitespace() string {
 // read decimal
 func (l *Lexer) readDecimal() token.Token {
 
-	//
-	// Read an integer-number.
-	//
 	integer := l.readNumber()
-
-	//
-	// Now we either expect:
-	//
-	//   .[digits]  -> Which converts us from an int to a float.
-	//
-	//   .blah      -> Which is a method-call on a raw number.
-	//
 	if l.ch == rune('.') && isDigit(l.peekChar()) {
-		//
-		// OK here we think we've got a float.
-		//
 		l.readChar()
 		fraction := l.readNumber()
 		return token.Token{Type: token.FLOAT, Literal: integer + "." + fraction}
@@ -353,10 +342,6 @@ func (l *Lexer) readString() string {
 		if l.ch == '"' || l.ch == '\'' || l.ch == 0 {
 			break
 		}
-
-		//
-		// Handle \n, \r, \t, \", etc.
-		//
 		if l.ch == '\\' {
 			l.readChar()
 
@@ -382,7 +367,6 @@ func (l *Lexer) readString() string {
 	return out
 }
 
-// read a regexp, including flags.
 func (l *Lexer) readRegexp() (string, error) {
 	out := ""
 
@@ -394,33 +378,17 @@ func (l *Lexer) readRegexp() (string, error) {
 		}
 		if l.ch == '/' {
 
-			// consume the terminating "/".
 			l.readChar()
-
-			// prepare to look for flags
 			flags := ""
-
-			// two flags are supported:
-			//   i -> Ignore-case
-			//   m -> Multiline
-			//
 			for l.ch == rune('i') || l.ch == rune('m') {
 
-				// save the char - unless it is a repeat
 				if !strings.Contains(flags, string(l.ch)) {
-
-					// we're going to sort the flags
 					tmp := strings.Split(flags, "")
 					tmp = append(tmp, string(l.ch))
 					flags = strings.Join(tmp, "")
-
 				}
-
-				// read the next
 				l.readChar()
 			}
-
-			// convert the regexp to go-lang
 			if len(flags) > 0 {
 				out = "(?" + flags + ")" + out
 			}
@@ -432,7 +400,6 @@ func (l *Lexer) readRegexp() (string, error) {
 	return out, nil
 }
 
-// read the end of a backtick-quoted string
 func (l *Lexer) readBacktick() string {
 	position := l.position + 1
 	for {
@@ -445,7 +412,6 @@ func (l *Lexer) readBacktick() string {
 	return out
 }
 
-// peek character
 func (l *Lexer) peekChar() rune {
 	if l.readPosition >= len(l.characters) {
 		return rune(0)
@@ -453,7 +419,6 @@ func (l *Lexer) peekChar() rune {
 	return l.characters[l.readPosition]
 }
 
-// determinate ch is identifier or not
 func isIdentifier(ch rune) bool {
 
 	if unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_' {
@@ -463,12 +428,10 @@ func isIdentifier(ch rune) bool {
 	return false
 }
 
-// is white space
 func isWhitespace(ch rune) bool {
 	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '.' || ch == '$'
 }
 
-// is Digit
 func isDigit(ch rune) bool {
 	return rune('0') <= ch && ch <= rune('9')
 }
