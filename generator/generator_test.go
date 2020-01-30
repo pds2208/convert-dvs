@@ -45,8 +45,6 @@ if (ioutcome ne 3 and age eq 0) then AGEDFE=0;
 	}
 	g := NewGenerator(program, "dv_name")
 
-	//print(g.GeneratePreamble().PythonRepresentation())
-
 	s := g.Generate().TargetCodeRepresentation()
 	print(s)
 }
@@ -83,7 +81,6 @@ array xrel2 {16,16} xrn1-xrn256;
 length ADDLEVEL $2;
 
 do i = 1 to 16;
-    smsxfun{i} = famunitn{i};
     smsxfun{i} = famunitn{i};
 end;
 
@@ -153,9 +150,7 @@ SMSXFU = smsxfun{recno};
 	if program == nil {
 		t.Fatalf("ParseProgram() returned nil")
 	}
-	g := NewGenerator(program, "dv_name")
-
-	//print(g.GeneratePreamble().PythonRepresentation())
+	g := NewGenerator(program, "SMSXFU")
 
 	s := g.Generate().TargetCodeRepresentation()
 	print(s)
@@ -200,7 +195,7 @@ if (ioutcome ne 3 and age eq 0) then AGEDFE=0;
 	if program == nil {
 		t.Fatalf("ParseProgram() returned nil")
 	}
-	g := NewGenerator(program, "dv_name")
+	g := NewGenerator(program, "AGEDFE")
 
 	//print(g.GeneratePreamble().PythonRepresentation())
 

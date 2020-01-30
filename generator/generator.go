@@ -4,21 +4,32 @@ import (
 	"bufio"
 	"bytes"
 	"convert/ast"
+	"convert/token"
 	"fmt"
 	"strings"
 )
 
 type Generator struct {
-	program       *ast.Program
-	buffer        *bytes.Buffer
-	programName   string
-	indent        int
-	inLet         bool
-	inIfCondition bool
+	program        *ast.Program
+	buffer         *bytes.Buffer
+	programName    string
+	indent         int
+	inIfCondition  bool
+	identifiers    map[string]string
+	nonIdentifiers map[string]string
+	sasInput       bool
+	sasIntck       bool
 }
 
 func NewGenerator(program *ast.Program, programName string) Generator {
-	return Generator{program: program, programName: programName, buffer: &bytes.Buffer{}}
+	return Generator{
+		program:        program,
+		programName:    programName,
+		buffer:         &bytes.Buffer{},
+		indent:         1,
+		identifiers:    map[string]string{},
+		nonIdentifiers: map[string]string{},
+	}
 }
 
 func (g Generator) TargetCodeRepresentation() string {
@@ -27,13 +38,54 @@ func (g Generator) TargetCodeRepresentation() string {
 	if err != nil {
 		return ""
 	}
+
 	var b bytes.Buffer
+	b.WriteString("def " + strings.ToLower(g.programName) + "_dv(")
+
+	var ids = map[string]string{}
+	for k, v := range g.identifiers {
+		if _, ok := g.nonIdentifiers[v]; !ok {
+			ids[k] = v
+		}
+	}
+	var i = 0
+	for _, v := range ids {
+		b.WriteString(strings.ToLower(v))
+		if i < len(ids)-1 {
+			b.WriteString(", ")
+		}
+		i++
+	}
+
+	b.WriteString("):\n")
+	if g.sasInput {
+		b.WriteString(`
+    def sas_input(a, b):
+        return a
+	`)
+		b.WriteString("\n")
+	}
+	if g.sasIntck {
+		b.WriteString(
+			`
+    def sas_intck(period, d1, d2):
+        # you need the dateutils package installed
+        from dateutil.parser import parse
+        return (parse(d2).year - parse(d1).year) * 12 + parse(d2).month - parse(d1).month
+	`)
+		b.WriteString("\n")
+	}
+
+	g.buffer.WriteString("\n" + g.indentString())
+
 	for _, v := range lines {
 		a := strings.TrimRight(v, " ")
 		if a != "" {
-			b.WriteString(v + "\n")
+			b.WriteString(strings.ToLower(v) + "\n")
 		}
 	}
+
+	b.WriteString(fmt.Sprintf("    return %s\n", strings.ToLower(g.programName)))
 
 	return b.String()
 }
@@ -52,34 +104,7 @@ func (g Generator) Generate() Generator {
 	return g
 }
 
-func (g Generator) GeneratePreamble() Generator {
-
-	elements := make([]string, 0)
-	for _, statement := range g.program.Statements {
-		if s, ok := statement.(*ast.ArrayStatement); ok {
-			elements = append(elements, s.Name.String())
-		}
-	}
-
-	if len(elements) == 0 {
-		g.buffer.WriteString("def " + g.programName + ":")
-		return g
-	}
-
-	g.buffer.WriteString("def " + g.programName + "(")
-
-	for k, v := range elements {
-		g.buffer.WriteString(v)
-		if k < len(elements)-1 {
-			g.buffer.WriteString(", ")
-		}
-	}
-
-	g.buffer.WriteString("):\n")
-	return g
-}
-
-func (g Generator) eval(node ast.Node) {
+func (g *Generator) eval(node ast.Node) {
 
 	switch node := node.(type) {
 
@@ -93,26 +118,50 @@ func (g Generator) eval(node ast.Node) {
 		g.evalIfExpression(node)
 
 	case *ast.ExpressionStatement:
-		g.buffer.WriteString(g.indentString())
 		g.eval(node.Expression)
 
 	case *ast.LetStatement:
-		g.buffer.WriteString(g.indentString())
-		g.inLet = true
-		g.buffer.WriteString(node.Name.Value + " = ")
-		if node.Value == nil {
-			g.buffer.WriteString("\"\"")
+		g.buffer.WriteString("\n" + g.indentString())
+		g.identifiers[node.Name.Value] = node.Name.Value
+
+		if s, ok := node.Value.(*ast.InfixExpression); ok {
+			g.buffer.WriteString(node.Name.Value + " = ")
+			if s.Token.Type == token.OR {
+				if t, ok := s.Right.(*ast.CallExpression); ok {
+					if t.Function.String() == "put" {
+						g.eval(s.Left)
+						//g.buffer.WriteString(" + str(")
+						g.buffer.WriteString(" + ")
+						g.eval(s.Right)
+						//g.buffer.WriteString(")")
+						break
+					}
+				}
+			} else {
+				if node.Value == nil {
+					g.buffer.WriteString("\"\"")
+				}
+				g.eval(node.Value)
+			}
+		} else {
+			g.buffer.WriteString(node.Name.Value + " = ")
+			if node.Value == nil {
+				g.buffer.WriteString("\"\"")
+			}
+			g.eval(node.Value)
 		}
-		g.eval(node.Value)
-		g.inLet = false
+
 		g.buffer.WriteString("\n")
 
 	case *ast.InExpression:
 		g.buffer.WriteString("(")
 		g.buffer.WriteString(node.Name.Value)
+		g.identifiers[node.Name.Value] = node.Name.Value
+
 		if node.Not {
 			g.buffer.WriteString(" not")
 		}
+
 		g.buffer.WriteString(" in (")
 		for i, v := range node.Values {
 			g.buffer.WriteString(v.String())
@@ -135,17 +184,25 @@ func (g Generator) eval(node ast.Node) {
 	case *ast.LengthLiteral:
 
 	case *ast.CallExpression:
-		g.buffer.WriteString(node.Function.String() + "(")
-		for i, v := range node.Arguments {
-			g.eval(v)
-			if i < len(node.Arguments)-1 {
-				g.buffer.WriteString(",")
+		switch node.Function.String() {
+		case "put":
+			g.generatePut(node)
+		case "input":
+			g.generateInput(node)
+		case "intck":
+			g.generateIntck(node)
+		default:
+			g.buffer.WriteString(node.Function.String() + "(")
+			for i, v := range node.Arguments {
+				g.eval(v)
+				if i < len(node.Arguments)-1 {
+					g.buffer.WriteString(",")
+				}
 			}
+			g.buffer.WriteString(")")
 		}
-		g.buffer.WriteString(")")
 
 	case *ast.ArrayStatement:
-		g.buffer.WriteString(node.Name.Value + " = []\n")
 
 	case *ast.StringLiteral:
 		g.buffer.WriteString(fmt.Sprintf("\"%s\"", node.Value))
@@ -164,14 +221,22 @@ func (g Generator) eval(node ast.Node) {
 		g.eval(node.Right)
 
 	case *ast.Identifier:
+		g.identifiers[node.Value] = node.Value
 		g.buffer.WriteString(fmt.Sprintf("%s", node.Value))
 
 	case *ast.DoLiteral:
-		g.buffer.WriteString(fmt.Sprintf("for %s in range(%s, %s):\n",
+		g.buffer.WriteString(g.indentString() + fmt.Sprintf("for %s in range(%s, %s):\n",
 			node.Variable.String(), node.From.String(), node.To.String()))
 		g.indent++
-		g.eval(node.Statements)
 
+		// we don't want these showing up as function parameters
+		g.nonIdentifiers[node.Variable.String()] = node.Variable.String()
+
+		g.eval(node.Statements)
+		g.indent--
+		g.buffer.WriteString("\n")
+
+		// ignore
 	case *ast.FormatExpression:
 
 	case *ast.InfixExpression:
@@ -184,6 +249,10 @@ func (g Generator) eval(node ast.Node) {
 				node.Operator = "!="
 			}
 		}
+		if node.Operator == "||" { // concat operator
+			node.Operator = "+"
+		}
+
 		g.eval(node.Left)
 
 		g.buffer.WriteString(fmt.Sprintf(" %s ", node.Operator))
@@ -194,13 +263,13 @@ func (g Generator) eval(node ast.Node) {
 	}
 }
 
-func (g Generator) evalProgram(program *ast.Program) {
+func (g *Generator) evalProgram(program *ast.Program) {
 	for _, statement := range program.Statements {
 		g.eval(statement)
 	}
 }
 
-func (g Generator) evalBlockStatement(block *ast.BlockStatement) {
+func (g *Generator) evalBlockStatement(block *ast.BlockStatement) {
 	if block == nil {
 		return
 	}
@@ -211,7 +280,7 @@ func (g Generator) evalBlockStatement(block *ast.BlockStatement) {
 	g.buffer.WriteString("\n")
 }
 
-func (g Generator) evalStatements(stmts []ast.Statement) {
+func (g *Generator) evalStatements(stmts []ast.Statement) {
 	if stmts == nil {
 		return
 	}
@@ -221,9 +290,10 @@ func (g Generator) evalStatements(stmts []ast.Statement) {
 	}
 }
 
-func (g Generator) evalIfExpression(ie *ast.IfExpression) {
-	g.buffer.WriteString("if ")
+func (g *Generator) evalIfExpression(ie *ast.IfExpression) {
+	g.buffer.WriteString(g.indentString() + "if ")
 	g.inIfCondition = true
+
 	g.eval(ie.Condition)
 	g.inIfCondition = false
 	g.buffer.WriteString(":\n")
@@ -231,7 +301,6 @@ func (g Generator) evalIfExpression(ie *ast.IfExpression) {
 	g.eval(ie.Consequence)
 	g.indent--
 	if ie.Alternative != nil {
-		//g.buffer.WriteString("\n")
 		g.buffer.WriteString(g.indentString())
 		g.buffer.WriteString("else:\n")
 		g.indent++
@@ -241,10 +310,54 @@ func (g Generator) evalIfExpression(ie *ast.IfExpression) {
 	}
 }
 
-func (g Generator) indentString() string {
+func (g *Generator) indentString() string {
 	b := &bytes.Buffer{}
 	for i := 0; i < g.indent; i++ {
 		b.WriteString("    ")
 	}
 	return b.String()
+}
+
+func (g *Generator) generatePut(node *ast.CallExpression) {
+	if len(node.Arguments) != 2 {
+		g.buffer.WriteString(" # Cannot parse - put() function does not contain 2 arguments\n")
+	}
+	// if we are in a let statement, don't convert to an int as we may need to concat - ugly
+	if g.inIfCondition {
+		g.buffer.WriteString("int(str(")
+	} else {
+		g.buffer.WriteString("str(")
+	}
+	g.eval(node.Arguments[0])
+	g.buffer.WriteString(")[:")
+	g.eval(node.Arguments[1])
+	if g.inIfCondition {
+		g.buffer.WriteString("])")
+	} else {
+		g.buffer.WriteString("]")
+	}
+}
+
+func (g *Generator) generateInput(node *ast.CallExpression) {
+	g.buffer.WriteString("sas_input(")
+	for i, v := range node.Arguments {
+		g.eval(v)
+		if i < len(node.Arguments)-1 {
+			g.buffer.WriteString(", ")
+		}
+	}
+	g.buffer.WriteString(")")
+	g.sasInput = true
+}
+
+func (g *Generator) generateIntck(node *ast.CallExpression) {
+	g.buffer.WriteString("sas_intck(")
+	for i, v := range node.Arguments {
+		g.eval(v)
+		if i < len(node.Arguments)-1 {
+			g.buffer.WriteString(", ")
+		}
+	}
+	g.buffer.WriteString(")")
+	g.sasIntck = true
 }
